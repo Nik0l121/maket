@@ -3,11 +3,11 @@ import { motion } from "motion/react";
 
 export function StatItem({ label, value, color, icon }: { label: string, value: string, color: string, icon: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5 min-w-[100px]">
-      <span className="text-[9px] font-black text-slate-400 tracking-[0.15em] uppercase">{label}</span>
-      <div className="flex items-center gap-2">
-        <div className="p-1.5 rounded-lg bg-slate-50/50">{icon}</div>
-        <span className={`font-black text-base ${color} tabular-nums tracking-tighter`}>{value}</span>
+    <div className="flex flex-col gap-0.5 min-w-[85px]">
+      <span className="text-[8px] font-black text-slate-400 tracking-[0.15em] uppercase">{label}</span>
+      <div className="flex items-center gap-1.5">
+        <div className="p-1 rounded-md bg-slate-50/60 scale-90">{icon}</div>
+        <span className={`font-black text-xs sm:text-sm ${color} tabular-nums tracking-tighter`}>{value}</span>
       </div>
     </div>
   );

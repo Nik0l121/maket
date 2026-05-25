@@ -1,5 +1,5 @@
 import React from "react";
-import { LogOut, ChevronRight, Activity } from "lucide-react";
+import { LogOut, ChevronRight, Activity, ShieldCheck, Key, CreditCard, Radio } from "lucide-react";
 import { motion } from "motion/react";
 import { NavItem } from "../types";
 
@@ -119,6 +119,41 @@ export function Sidebar({
               )}
             </button>
           ))}
+        </div>
+
+        {/* Account metrics block inside public sidebar */}
+        <div className="space-y-3 px-3 pt-4 border-t border-slate-100/60">
+          <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest leading-none">Аккаунт</p>
+          <div className="grid grid-cols-1 gap-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/60 transition-all hover:bg-slate-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+                <span className="text-[11px] font-bold text-slate-500">Защита</span>
+              </div>
+              <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md tabular-nums">94/100</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Key size={14} className="text-blue-500 shrink-0" />
+                <span className="text-[11px] font-bold text-slate-500">API-ключи</span>
+              </div>
+              <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md tabular-nums">4 активных</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard size={14} className="text-emerald-500 shrink-0" />
+                <span className="text-[11px] font-bold text-slate-500">Подписка</span>
+              </div>
+              <span className="text-[11px] font-black text-slate-800 tabular-nums">PRO до 24.06</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Radio size={14} className="text-blue-500 shrink-0" />
+                <span className="text-[11px] font-bold text-slate-500">Сессии</span>
+              </div>
+              <span className="text-[11px] font-black text-slate-800 tabular-nums">3 онлайн</span>
+            </div>
+          </div>
         </div>
       </div>
 

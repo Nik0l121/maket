@@ -18,6 +18,8 @@ import { Sidebar } from "./components/Sidebar";
 import { ScannerPage, SignalDrawer } from "./pages/ScannerPage";
 import { AccountPage } from "./pages/AccountPage";
 import { SecurityPage } from "./pages/SecurityPage";
+import { ApiKeyPage } from "./pages/ApiKeyPage";
+import { SubscriptionPage } from "./pages/SubscriptionPage";
 
 export default function App() {
   const [username, setUsername] = useState("Admin");
@@ -104,6 +106,10 @@ export default function App() {
                 <ScannerPage key="scanner" onSelectSignal={setSelectedSignal} isScannerRunning={isScannerRunning} />
               ) : activeTab === "Безопасность" ? (
                 <SecurityPage key="security" />
+              ) : activeTab === "API-ключи" ? (
+                <ApiKeyPage key="api-keys" />
+              ) : activeTab === "Подписка" ? (
+                <SubscriptionPage key="subscription" />
               ) : (
                 <AccountPage 
                   key="account"

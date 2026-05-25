@@ -33,45 +33,6 @@ export function AccountPage({
       animate="visible"
       className="p-5 sm:p-6 lg:p-8 max-w-[1200px] mx-auto space-y-6 sm:space-y-8"
     >
-      {/* Page Header & Stats */}
-      <motion.div variants={itemVariants} className="space-y-6">
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-          <div className="flex items-center gap-3.5 sm:gap-4">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-100 transition-transform hover:rotate-3">
-              <User size={22} className="sm:size-6" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">Аккаунт</h1>
-              <p className="text-slate-400 text-[10px] sm:text-xs lg:text-sm font-bold tracking-tight">Безопасность и персональные данные</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-4 sm:gap-6 bg-white p-4 sm:p-5 rounded-[24px] border border-slate-200/60 shadow-sm transition-all hover:shadow-lg hover:shadow-slate-200/10">
-            <StatItem 
-              label="ЗАЩИТА" 
-              value="94/100" 
-              color="text-emerald-500" 
-              icon={<ShieldCheck size={18} className="text-emerald-400" />} 
-            />
-            <div className="w-px h-8 bg-slate-100 hidden sm:block" />
-            <StatItem 
-              label="API" 
-              value="6 активных" 
-              color="text-blue-600" 
-              icon={<Key size={18} className="text-blue-400" />} 
-            />
-            <div className="w-px h-8 bg-slate-100 hidden sm:block" />
-            <StatItem 
-              label="PRO ГРЕЙД" 
-              value="до 24.06" 
-              color="text-emerald-500" 
-              icon={<CreditCard size={18} className="text-emerald-400" />} 
-            />
-          </div>
-        </div>
-        <div className="h-px bg-gradient-to-r from-slate-200/60 via-slate-200/60 to-transparent w-full" />
-      </motion.div>
-
       {/* Action Header */}
       <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
