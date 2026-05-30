@@ -1,7 +1,7 @@
 import React from "react";
-import { LogOut, ChevronRight, Activity, ShieldCheck, Key, CreditCard, Radio } from "lucide-react";
+import { LogOut, ChevronRight, Activity, ShieldCheck, Key, CreditCard, Radio, Settings } from "lucide-react";
 import { motion } from "motion/react";
-import { NavItem } from "../types";
+import { NavItem, NotificationItem } from "../types";
 
 export function SessionStat({ label, value, color = "text-slate-900" }: { label: string, value: string, color?: string }) {
   return (
@@ -21,6 +21,13 @@ interface SidebarProps {
   isScannerTab?: boolean;
   isScannerRunning?: boolean;
   setIsScannerRunning?: (running: boolean) => void;
+  
+  // Notification States
+  notifications: NotificationItem[];
+  activeGroupFilter: string;
+  setActiveGroupFilter: (group: string) => void;
+  isSettingsMode: boolean;
+  setIsSettingsMode: (mode: boolean) => void;
 }
 
 export function Sidebar({
@@ -31,7 +38,12 @@ export function Sidebar({
   setIsSidebarOpen,
   isScannerTab,
   isScannerRunning,
-  setIsScannerRunning
+  setIsScannerRunning,
+  notifications,
+  activeGroupFilter,
+  setActiveGroupFilter,
+  isSettingsMode,
+  setIsSettingsMode
 }: SidebarProps) {
   return (
     <motion.aside 
@@ -90,71 +102,174 @@ export function Sidebar({
           </div>
         )}
 
-        <div className="space-y-0.5 pt-2">
-          <p className="px-3 text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-3 leading-none">Разделы</p>
-          {navItems.map((item) => (
-            <button
-              id={`nav-item-${item.name.toLowerCase()}`}
-              key={item.name}
-              onClick={() => {
-                setActiveTab(item.name);
-                if (window.innerWidth < 1024) setIsSidebarOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 group ${
-                activeTab === item.name 
-                   ? "bg-blue-600 text-white shadow-md shadow-blue-100" 
-                   : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`p-0.5 rounded transition-colors ${activeTab === item.name ? "text-white" : "text-slate-400 group-hover:text-slate-600"}`}>
-                  {React.cloneElement(item.icon as React.ReactElement, { size: 16 })}
-                </div>
-                <span className="font-bold text-[13px]">{item.name}</span>
+        {activeTab === "Уведомления" ? (
+          <>
+            {/* ГРУППА СОБЫТИЙ */}
+            <div className="space-y-0.5 pt-2">
+              <p className="px-3 text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-3 leading-none">ГРУППА СОБЫТИЙ</p>
+              <div className="space-y-1">
+                {[
+                  { name: "Все", count: notifications?.length || 0 },
+                  { name: "Сигналы", count: notifications?.filter(n => n.group === "Сигналы").length || 0 },
+                  { name: "Арбитраж", count: notifications?.filter(n => n.group === "Арбитраж").length || 0 },
+                  { name: "События исполнения", count: notifications?.filter(n => n.group === "События исполнения").length || 0 },
+                  { name: "Система", count: notifications?.filter(n => n.group === "Система").length || 0 },
+                ].map((g) => {
+                  const isActive = activeGroupFilter === g.name && !isSettingsMode;
+                  return (
+                    <button
+                      key={g.name}
+                      onClick={() => {
+                        setActiveGroupFilter?.(g.name);
+                        setIsSettingsMode?.(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 group cursor-pointer text-left text-xs font-bold leading-none ${
+                        isActive 
+                          ? "bg-blue-600 text-white font-extrabold shadow-md shadow-blue-500/20" 
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                      }`}
+                    >
+                      <span className="truncate">{g.name}</span>
+                      <span className={`px-2 py-0.5 text-[9px] font-black rounded-md ${
+                        isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {g.count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              {activeTab === item.name && (
-                <motion.div layoutId="active-indicator">
-                  <ChevronRight size={14} />
-                </motion.div>
-              )}
-            </button>
-          ))}
-        </div>
+            </div>
 
-        {/* Account metrics block inside public sidebar */}
-        <div className="space-y-3 px-3 pt-4 border-t border-slate-100/60">
-          <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest leading-none">Аккаунт</p>
-          <div className="grid grid-cols-1 gap-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/60 transition-all hover:bg-slate-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-                <span className="text-[11px] font-bold text-slate-500">Защита</span>
-              </div>
-              <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md tabular-nums">94/100</span>
+            {/* УПРАВЛЕНИЕ */}
+            <div className="space-y-2 pt-4 border-t border-slate-100/60">
+              <p className="px-3 text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-3 leading-none">УПРАВЛЕНИЕ</p>
+              <button
+                onClick={() => {
+                  setIsSettingsMode?.(true);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-300 group cursor-pointer text-left border ${
+                  isSettingsMode 
+                    ? "bg-slate-900 border-slate-950 text-white font-extrabold shadow-sm shadow-slate-950/25" 
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                }`}
+              >
+                <div className={`p-0.5 rounded transition-colors ${isSettingsMode ? "text-white" : "text-slate-400"}`}>
+                  <Settings size={15} />
+                </div>
+                <span className="font-bold text-[13px]">Настройки</span>
+              </button>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Key size={14} className="text-blue-500 shrink-0" />
-                <span className="text-[11px] font-bold text-slate-500">API-ключи</span>
+
+            {/* СТАТИСТИКА СОБЫТИЙ */}
+            <div className="space-y-3 px-3 pt-4 border-t border-[#f1f5f9]">
+              <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest leading-none">СТАТИСТИКА СОБЫТИЙ</p>
+              <div className="grid grid-cols-1 gap-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/60 hover:bg-slate-50 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-500">Всего</span>
+                  <span className="text-[11px] font-black text-slate-800 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md tabular-nums">
+                    {notifications?.length || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                    <span className="text-[11px] font-bold text-slate-500">Новые</span>
+                  </div>
+                  <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md tabular-nums">
+                    {notifications?.filter((n: any) => n.status === "новое").length || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-500">Важные</span>
+                  <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md tabular-nums">
+                    {notifications?.filter((n: any) => n.group === "Арбитраж" || n.group === "Сигналы").length || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-500">Группы</span>
+                  <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md tabular-nums">
+                    {new Set(notifications?.map((n: any) => n.group) || []).size}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-500">Проверить</span>
+                  <span className="text-[10px] font-black text-[#0098ea] bg-sky-50 px-1.5 py-0.5 rounded-md tabular-nums">
+                    {notifications?.filter((n: any) => n.status === "новое" && (n.group === "Сигналы" || n.group === "Арбитраж")).length || 0}
+                  </span>
+                </div>
               </div>
-              <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md tabular-nums">4 активных</span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard size={14} className="text-emerald-500 shrink-0" />
-                <span className="text-[11px] font-bold text-slate-500">Подписка</span>
+          </>
+        ) : (
+          <>
+            <div className="space-y-0.5 pt-2">
+              <p className="px-3 text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-3 leading-none">Разделы</p>
+              {navItems.map((item) => (
+                <button
+                  id={`nav-item-${item.name.toLowerCase()}`}
+                  key={item.name}
+                  onClick={() => {
+                    setActiveTab(item.name);
+                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 group ${
+                    activeTab === item.name 
+                       ? "bg-blue-600 text-white shadow-md shadow-blue-100" 
+                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-0.5 rounded transition-colors ${activeTab === item.name ? "text-white" : "text-slate-400 group-hover:text-slate-600"}`}>
+                      {React.cloneElement(item.icon as React.ReactElement, { size: 16 })}
+                    </div>
+                    <span className="font-bold text-[13px]">{item.name}</span>
+                  </div>
+                  {activeTab === item.name && (
+                    <motion.div layoutId="active-indicator">
+                      <ChevronRight size={14} />
+                    </motion.div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Account metrics block inside public sidebar */}
+            <div className="space-y-3 px-3 pt-4 border-t border-slate-100/60">
+              <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest leading-none">Аккаунт</p>
+              <div className="grid grid-cols-1 gap-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/60 transition-all hover:bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+                    <span className="text-[11px] font-bold text-slate-500">Защита</span>
+                  </div>
+                  <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md tabular-nums">94/100</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Key size={14} className="text-blue-500 shrink-0" />
+                    <span className="text-[11px] font-bold text-slate-500">API-ключи</span>
+                  </div>
+                  <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md tabular-nums">4 активных</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CreditCard size={14} className="text-emerald-500 shrink-0" />
+                    <span className="text-[11px] font-bold text-slate-500">Подписка</span>
+                  </div>
+                  <span className="text-[11px] font-black text-slate-800 tabular-nums">PRO до 24.06</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Radio size={14} className="text-blue-500 shrink-0" />
+                    <span className="text-[11px] font-bold text-slate-500">Сессии</span>
+                  </div>
+                  <span className="text-[11px] font-black text-slate-800 tabular-nums">3 онлайн</span>
+                </div>
               </div>
-              <span className="text-[11px] font-black text-slate-800 tabular-nums">PRO до 24.06</span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Radio size={14} className="text-blue-500 shrink-0" />
-                <span className="text-[11px] font-bold text-slate-500">Сессии</span>
-              </div>
-              <span className="text-[11px] font-black text-slate-800 tabular-nums">3 онлайн</span>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Active Processes Footer */}

@@ -213,7 +213,7 @@ export function ScannerPage({ onSelectSignal, isScannerRunning }: { onSelectSign
   const filters = ["Все", "Свежие", "К запуску", "Прибыльные", "Риск"];
 
   const mockSignals: Signal[] = [
-    { id: 1, pair: "IR/USDT", network: "BERA", spread: "+0.44%", profit: "+$0.53", buyPrice: "0.02826", sellPrice: "0.02827", buyDex: "HTX", sellDex: "BITGET", status: "К запуску", type: "profit" },
+    { id: 1, pair: "BER/USDT", network: "BERA", spread: "+0.44%", profit: "+$0.53", buyPrice: "0.02826", sellPrice: "0.02827", buyDex: "HTX", sellDex: "BITGET", status: "К запуску", type: "profit" },
     { id: 2, pair: "ETHW/USDT", network: "ETHW", spread: "-1.22%", profit: "-$0.20", buyPrice: "0.3225", sellPrice: "0.3179", buyDex: "HTX", sellDex: "MEXC", status: "Риск", type: "risk" }
   ];
 

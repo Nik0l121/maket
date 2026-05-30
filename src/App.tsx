@@ -20,8 +20,12 @@ import { AccountPage } from "./pages/AccountPage";
 import { SecurityPage } from "./pages/SecurityPage";
 import { ApiKeyPage } from "./pages/ApiKeyPage";
 import { SubscriptionPage } from "./pages/SubscriptionPage";
+import { NotificationsPage, initialNotifications } from "./pages/NotificationsPage";
+import { NotificationItem } from "./types";
+import { useToast } from "./components/Toast";
 
 export default function App() {
+  const { showToast } = useToast();
   const [username, setUsername] = useState("Admin");
   const [email, setEmail] = useState("gavrfil@gmail.com");
   const [phone, setPhone] = useState("+79053440725");
@@ -32,9 +36,52 @@ export default function App() {
   const [isScannerRunning, setIsScannerRunning] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<any>(null);
 
+  // Lifted Notification States
+  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
+  const [activeGroupFilter, setActiveGroupFilter] = useState("Все");
+  const [isSettingsMode, setIsSettingsMode] = useState(false);
+
   const handleSave = () => {
     setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 2000);
+    setTimeout(() => {
+      setIsSaving(false);
+      showToast("Настройки профиля успешно обновлены", "success");
+    }, 2000);
+  };
+
+
+  const handleActiveTabChange = (name: string) => {
+    setActiveTab(name);
+    if (name === "Сканер") {
+      setActiveHeaderNav("Сканер");
+    } else if (["Профиль", "Безопасность", "API-ключи", "Подписка"].includes(name)) {
+      setActiveHeaderNav("Аккаунт");
+    } else if (name === "Уведомления") {
+      setActiveHeaderNav("Уведомления");
+    }
+  };
+
+  const handleGoToSignal = (pairName: string) => {
+    const signalsList = [
+      { id: 1, pair: "BER/USDT", network: "BERA", spread: "+0.44%", profit: "+$0.53", buyPrice: "0.02826", sellPrice: "0.02827", buyDex: "HTX", sellDex: "BITGET", status: "К запуску", type: "profit" },
+      { id: 2, pair: "ETHW/USDT", network: "ETHW", spread: "-1.22%", profit: "-$0.20", buyPrice: "0.3225", sellPrice: "0.3179", buyDex: "HTX", sellDex: "MEXC", status: "Риск", type: "risk" }
+    ];
+    
+    const searchStr = pairName.toLowerCase();
+    const found = signalsList.find(s => {
+      const pName = s.pair.toLowerCase();
+      const pBase = s.pair.split('/')[0].toLowerCase();
+      return searchStr.includes(pName) || searchStr.includes(pBase) || pName.includes(searchStr) || pBase.includes(searchStr);
+    });
+
+    if (found) {
+      setSelectedSignal(found);
+      handleActiveTabChange("Сканер");
+      showToast(`Сигнал ${found.pair} успешно открыт в Сканере`, "success", "Переход к сигналу");
+    } else {
+      handleActiveTabChange("Сканер");
+      showToast("Переход в Сканер Арбитража", "info");
+    }
   };
 
   const navItems = [
@@ -66,6 +113,7 @@ export default function App() {
           setActiveHeaderNav(name);
           if (name === "Сканер") setActiveTab("Сканер");
           if (name === "Аккаунт") setActiveTab("Профиль");
+          if (name === "Уведомления") setActiveTab("Уведомления");
         }}
         username={username}
         email={email}
@@ -91,11 +139,16 @@ export default function App() {
           isSidebarOpen={isSidebarOpen}
           navItems={navItems}
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleActiveTabChange}
           setIsSidebarOpen={setIsSidebarOpen}
           isScannerTab={activeTab === "Сканер"}
           isScannerRunning={isScannerRunning}
           setIsScannerRunning={setIsScannerRunning}
+          notifications={notifications}
+          activeGroupFilter={activeGroupFilter}
+          setActiveGroupFilter={setActiveGroupFilter}
+          isSettingsMode={isSettingsMode}
+          setIsSettingsMode={setIsSettingsMode}
         />
 
         {/* Main Content Area */}
@@ -110,6 +163,17 @@ export default function App() {
                 <ApiKeyPage key="api-keys" />
               ) : activeTab === "Подписка" ? (
                 <SubscriptionPage key="subscription" />
+              ) : activeTab === "Уведомления" ? (
+                <NotificationsPage 
+                  key="notifications" 
+                  notifications={notifications}
+                  setNotifications={setNotifications}
+                  activeGroupFilter={activeGroupFilter}
+                  setActiveGroupFilter={setActiveGroupFilter}
+                  isSettingsMode={isSettingsMode}
+                  setIsSettingsMode={setIsSettingsMode}
+                  onGoToSignal={handleGoToSignal}
+                />
               ) : (
                 <AccountPage 
                   key="account"

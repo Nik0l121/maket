@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { containerVariants, itemVariants } from "../types";
+import { useToast } from "../components/Toast";
 
 interface SubscriptionItem {
   id: string;
@@ -56,6 +57,7 @@ interface SubscriptionItem {
 }
 
 export function SubscriptionPage() {
+  const { showToast } = useToast();
   const [activeFilter, setActiveFilter] = useState("Все");
   const [expandedId, setExpandedId] = useState<string | null>("active-curr");
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -79,6 +81,7 @@ export function SubscriptionPage() {
     setTimeout(() => {
       setIsGeneratingInvoice(false);
       setIsInvoiceGenerated(true);
+      showToast("Счет на оплату успешно сгенерирован", "info", "Оплата");
     }, 1500);
   };
 
@@ -87,6 +90,7 @@ export function SubscriptionPage() {
     setTimeout(() => {
       setIsConfirmingPayment(false);
       setIsSuccessPaid(true);
+      showToast(`Оплата подтверждена! План ${selectedPlanId} успешно подключен`, "success", "Подписка");
       setTimeout(() => {
         setIsSuccessPaid(false);
         setIsInvoiceGenerated(false);
@@ -100,6 +104,7 @@ export function SubscriptionPage() {
     setTimeout(() => {
       setHistoryConfirmingId(null);
       setHistorySuccessId(itemId);
+      showToast("Транзакция успешно подтверждена сетью", "success", "Сеть TON");
       setTimeout(() => {
         setHistorySuccessId(null);
         // Update the item in items to OПЛАЧЕНО
@@ -302,6 +307,7 @@ export function SubscriptionPage() {
   const handleCopy = (text: string, labelId: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(labelId);
+    showToast("Данные успешно скопированы в буфер обмена", "success");
     setTimeout(() => setCopiedId(null), 2000);
   };
 

@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { containerVariants, itemVariants } from "../types";
 import { StatItem } from "../components/CommonUI";
+import { useToast } from "../components/Toast";
 
 interface ApiKey {
   id: number;
@@ -36,6 +37,7 @@ interface ApiKey {
 }
 
 export function ApiKeyPage() {
+  const { showToast } = useToast();
   const [activeFilter, setActiveFilter] = useState("Все");
   const [expandedId, setExpandedId] = useState<number | null>(1); // default expand first item like in screenshot
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -195,12 +197,15 @@ export function ApiKeyPage() {
       setNewSecretKey("");
       setNewPassphrase("");
       setNewCanTrade(true);
+      showToast(`API-ключ для биржи ${newExchange} успешно сохранен и верифицирован`, "success", "Интеграция");
     }, 1200);
   };
 
   const handleDelete = (id: number) => {
+    const keyToDelete = apiKeys.find(k => k.id === id);
     setApiKeys(apiKeys.filter(k => k.id !== id));
     setIsDeleteConfirmOpen(null);
+    showToast(`API-ключ ${keyToDelete ? `для ${keyToDelete.exchange}` : ""} успешно удален`, "info", "Удаление");
   };
 
   // Stats calculation
@@ -585,6 +590,7 @@ export function ApiKeyPage() {
                         readOnly
                         onClick={() => {
                           navigator.clipboard.writeText("185.185.142.24");
+                          showToast("IP-адрес 185.185.142.24 скопирован в буфер обмена", "success");
                         }}
                         title="Скопировать IP"
                         className="w-full px-3 py-2 bg-[#f4f7fc] border border-slate-200/80 rounded-xl text-slate-900 font-extrabold text-[11px] outline-none cursor-pointer hover:bg-[#eef2f9] transition-all font-mono"
@@ -698,6 +704,7 @@ export function ApiKeyPage() {
                           <span 
                             onClick={() => {
                               navigator.clipboard.writeText("185.185.142.24");
+                              showToast("IP-адрес 185.185.142.24 скопирован в буфер обмена", "success");
                             }}
                             title="Скопировать"
                             className="font-extrabold text-[#3b66f5] hover:underline cursor-pointer select-all font-mono text-[10px]"

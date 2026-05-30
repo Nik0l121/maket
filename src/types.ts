@@ -24,6 +24,27 @@ export interface NavItem {
   icon: React.ReactNode;
 }
 
+export interface NotificationItem {
+  id: string;
+  time: string;
+  status: "новое" | "прочитано";
+  title: string;
+  subtitle: string;
+  source: string;
+  value: string;
+  valueColor: "green" | "red" | "purple" | "blue";
+  priority: "NEW" | "READ" | "СИСТЕМА";
+  channel: string;
+  group: "Сигналы" | "Арбитраж" | "События исполнения" | "Система";
+  colorIndicator: string;
+  detailedText: string;
+  parameters: {
+    name: string;
+    value: string;
+    tagStyle?: string;
+  }[];
+}
+
 export const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
