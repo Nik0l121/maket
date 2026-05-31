@@ -28,6 +28,12 @@ interface SidebarProps {
   setActiveGroupFilter: (group: string) => void;
   isSettingsMode: boolean;
   setIsSettingsMode: (mode: boolean) => void;
+
+  // Balance States
+  selectedExchangeFilter?: string;
+  setSelectedExchangeFilter?: (filter: string) => void;
+  balanceSubView?: string;
+  setBalanceSubView?: (view: string) => void;
 }
 
 export function Sidebar({
@@ -43,7 +49,11 @@ export function Sidebar({
   activeGroupFilter,
   setActiveGroupFilter,
   isSettingsMode,
-  setIsSettingsMode
+  setIsSettingsMode,
+  selectedExchangeFilter,
+  setSelectedExchangeFilter,
+  balanceSubView,
+  setBalanceSubView
 }: SidebarProps) {
   return (
     <motion.aside 
@@ -102,7 +112,93 @@ export function Sidebar({
           </div>
         )}
 
-        {activeTab === "Уведомления" ? (
+        {activeTab === "Баланс" ? (
+          <>
+            {/* БАЛАНС МЕТРИКИ */}
+            <div className="space-y-3 px-3 pt-2">
+              <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest leading-none">Метрики баланса</p>
+              <div className="grid grid-cols-2 gap-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/60 hover:bg-slate-50 transition-all">
+                <div className="col-span-2 flex flex-col p-2 bg-white border border-slate-100/40 rounded-xl">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase leading-none">Всего</span>
+                  <span className="text-sm font-black text-slate-800 font-mono tracking-tight mt-0.5">$124,892</span>
+                </div>
+                <div className="flex flex-col p-2 bg-white border border-slate-100/40 rounded-xl">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase leading-none">Биржи</span>
+                  <span className="text-xs font-black text-slate-800 tracking-tight mt-0.5">5</span>
+                </div>
+                <div className="flex flex-col p-2 bg-white border border-slate-100/40 rounded-xl">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase leading-none">Токены</span>
+                  <span className="text-xs font-black text-slate-800 tracking-tight mt-0.5">18</span>
+                </div>
+                <div className="col-span-2 flex items-center justify-between p-2 bg-white border border-slate-100/40 rounded-xl text-[10px]">
+                  <span className="font-bold text-slate-400">Обновлено</span>
+                  <span className="font-black text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 text-[9px]">2 мин</span>
+                </div>
+              </div>
+            </div>
+
+            {/* СЕГМЕНТИРОВАННЫЙ КОНТРОЛЬ */}
+            <div className="px-3 pt-4 border-t border-slate-105">
+              <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-2.5 leading-none">Режим просмотра</p>
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+                <button
+                  onClick={() => setBalanceSubView?.("Отчет по активам")}
+                  className={`flex-1 py-1.5 text-[10.5px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                    balanceSubView === "Отчет по активам"
+                      ? "bg-white text-slate-800 shadow-3xs"
+                      : "text-slate-450 hover:text-slate-600"
+                  }`}
+                >
+                  Отчет
+                </button>
+                <button
+                  onClick={() => setBalanceSubView?.("Сводка")}
+                  className={`flex-1 py-1.5 text-[10.5px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                    balanceSubView === "Сводка"
+                      ? "bg-white text-slate-800 shadow-3xs"
+                      : "text-slate-450 hover:text-slate-600"
+                  }`}
+                >
+                  Сводка
+                </button>
+              </div>
+            </div>
+
+            {/* СПИСОК БИРЖ */}
+            <div className="space-y-1.5 px-3 pt-4 border-t border-slate-105">
+              <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-2 px-1 leading-none">БИРЖИ</p>
+              <div className="space-y-1 max-h-[190px] overflow-y-auto pr-1">
+                {[
+                  { name: "Все", color: "bg-blue-500" },
+                  { name: "Binance", color: "bg-amber-500" },
+                  { name: "OKX", color: "bg-slate-900 border border-slate-800" },
+                  { name: "Bybit", color: "bg-yellow-500" },
+                  { name: "Gate", color: "bg-blue-600" },
+                  { name: "KuCoin", color: "bg-emerald-500" }
+                ].map((exch) => {
+                  const isSelt = selectedExchangeFilter === exch.name;
+                  return (
+                    <button
+                      key={exch.name}
+                      onClick={() => setSelectedExchangeFilter?.(exch.name)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all duration-200 cursor-pointer text-left ${
+                        isSelt
+                          ? "bg-blue-600 text-white font-extrabold shadow-sm"
+                          : "text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${exch.color}`} />
+                        <span className="text-[11.5px] font-bold leading-none">{exch.name}</span>
+                      </div>
+                      {isSelt && <ChevronRight size={12} className="text-white" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : activeTab === "Уведомления" ? (
           <>
             {/* ГРУППА СОБЫТИЙ */}
             <div className="space-y-0.5 pt-2">

@@ -21,6 +21,8 @@ import { SecurityPage } from "./pages/SecurityPage";
 import { ApiKeyPage } from "./pages/ApiKeyPage";
 import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { NotificationsPage, initialNotifications } from "./pages/NotificationsPage";
+import { BalancePage } from "./pages/BalancePage";
+import { FaqPage } from "./pages/FaqPage";
 import { NotificationItem } from "./types";
 import { useToast } from "./components/Toast";
 
@@ -41,6 +43,10 @@ export default function App() {
   const [activeGroupFilter, setActiveGroupFilter] = useState("Все");
   const [isSettingsMode, setIsSettingsMode] = useState(false);
 
+  // Lifted Balance States
+  const [selectedExchangeFilter, setSelectedExchangeFilter] = useState("Все");
+  const [balanceSubView, setBalanceSubView] = useState("Отчет по активам");
+
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
@@ -58,6 +64,10 @@ export default function App() {
       setActiveHeaderNav("Аккаунт");
     } else if (name === "Уведомления") {
       setActiveHeaderNav("Уведомления");
+    } else if (name === "Баланс") {
+      setActiveHeaderNav("Баланс");
+    } else if (name === "FAQ") {
+      setActiveHeaderNav("FAQ");
     }
   };
 
@@ -114,6 +124,8 @@ export default function App() {
           if (name === "Сканер") setActiveTab("Сканер");
           if (name === "Аккаунт") setActiveTab("Профиль");
           if (name === "Уведомления") setActiveTab("Уведомления");
+          if (name === "Баланс") setActiveTab("Баланс");
+          if (name === "FAQ") setActiveTab("FAQ");
         }}
         username={username}
         email={email}
@@ -149,6 +161,10 @@ export default function App() {
           setActiveGroupFilter={setActiveGroupFilter}
           isSettingsMode={isSettingsMode}
           setIsSettingsMode={setIsSettingsMode}
+          selectedExchangeFilter={selectedExchangeFilter}
+          setSelectedExchangeFilter={setSelectedExchangeFilter}
+          balanceSubView={balanceSubView}
+          setBalanceSubView={setBalanceSubView}
         />
 
         {/* Main Content Area */}
@@ -174,6 +190,13 @@ export default function App() {
                   setIsSettingsMode={setIsSettingsMode}
                   onGoToSignal={handleGoToSignal}
                 />
+              ) : activeTab === "Баланс" ? (
+                <BalancePage 
+                  selectedExchangeFilter={selectedExchangeFilter} 
+                  balanceSubView={balanceSubView} 
+                />
+              ) : activeTab === "FAQ" ? (
+                <FaqPage key="faq" />
               ) : (
                 <AccountPage 
                   key="account"
