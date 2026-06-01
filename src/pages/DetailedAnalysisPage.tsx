@@ -48,11 +48,9 @@ export function DetailedSignalAnalysis({
   const [isSimulatingLivePrice, setIsSimulatingLivePrice] = useState<boolean>(true);
   const [priceDeviation, setPriceDeviation] = useState<number>(0);
   
-  // Interactive slippage tolerance (0.1% to 1.5%)
-  const [slippage, setSlippage] = useState<number>(0.5);
-  
-  // Custom Gas priority settings: "eco" (0.5x network fee), "normal" (1.0x), "priority" (2.0x)
-  const [gasPriority, setGasPriority] = useState<"eco" | "normal" | "priority">("normal");
+  // CEX Order Type and Execution Mode for CEX-CEX arbitrage
+  const [orderType, setOrderType] = useState<"market" | "limit">("market");
+  const [executionMode, setExecutionMode] = useState<"parallel" | "sequential">("sequential");
 
   // Input fields loaded with signal defaults
   const [buyPriceInput, setBuyPriceInput] = useState<string>(signal.buyPrice);
@@ -161,10 +159,9 @@ export function DetailedSignalAnalysis({
   const parsedSell = (parseFloat(sellPriceInput) || 0.005) * (1 + priceDeviation * 0.8);
   const parsedSum = parseFloat(sumInput) || 0;
 
-  // Fee factors based on current network and custom picked Gas priority
+  // Fee factors based on current network (standard CEX withdrawal fee)
   const baseNetworkFee = signal.network === "BERA" ? 0.0001 : signal.network === "SOLANA" ? 0.0005 : signal.network === "ETHW" ? 0.02 : 0.001;
-  const gasMultiplier = gasPriority === "eco" ? 0.6 : gasPriority === "priority" ? 2.2 : 1.0;
-  const networkFee = baseNetworkFee * gasMultiplier;
+  const networkFee = baseNetworkFee;
   
   const takerBuy = parsedSum * 0.001; // Taker fee on buy CEX (0.1%)
   const tokensBought = parsedSum > 0 ? (parsedSum - takerBuy) / parsedBuy : 0;
@@ -190,11 +187,11 @@ export function DetailedSignalAnalysis({
   const executionLogs = [
     `[0.1s] Инициализация защищенного межбиржевого API-подключения...`,
     `[0.9s] Торговый буфер зарезервирован на сумму ${parsedSum.toFixed(2)} USDT на балансах CEX.`,
-    `[1.8s] Выставление лимитного ордера и покупка на CEX "${signal.buyDex}" по цене ${parsedBuy.toFixed(5)} USDT... Успешно выполнено`,
+    `[1.8s] Выставление ${orderType === "market" ? "рыночного" : "лимитного"} ордера и покупка на CEX "${signal.buyDex}" по цене ${parsedBuy.toFixed(5)} USDT... Успешно выполнено`,
     `[3.0s] Зачислено на CEX кошелек: ${tokensBought.toFixed(2)} ${baseToken} за вычетом торговых комиссионных сборов.`,
-    `[4.2s] Мгновенный межбиржевой перевод токенов в сети "${signal.network}" (приоритет: ${gasPriority.toUpperCase()})... Подтверждено`,
+    `[4.2s] Мгновенный межбиржевой перевод токенов в сети "${signal.network}" (режим: ${executionMode === "parallel" ? "ПАРАЛЛЕЛЬНО" : "ПОСЛЕДОВАТЕЛЬНО"})... Подтверждено`,
     `[5.5s] Мгновенный депозит зачислен на баланс CEX "${signal.sellDex}"`,
-    `[6.9s] Выполнение встречной заявки на продажу по курсу ${parsedSell.toFixed(5)} USDT в стакане лимитных ордеров... Исполнено`,
+    `[6.9s] Выполнение встречной заявки на продажу по курсу ${parsedSell.toFixed(5)} USDT в стакане ${orderType === "market" ? "рыночных" : "лимитных"} ордеров... Исполнено`,
     `[7.8s] Чистая арбитражная прибыль +${netProfit.toFixed(4)} USDT зачислена на Ваш баланс аккаунта.`,
   ];
 
@@ -251,8 +248,8 @@ export function DetailedSignalAnalysis({
     };
     setRunningArbitrages?.((prev: any[]) => [...prev, initialArb]);
 
-    // Fast timings for execution step ticks
-    const stepInterval = gasPriority === "priority" ? 800 : gasPriority === "eco" ? 1500 : 1000;
+    // Fast timings for execution step ticks (parallel mode triggers orders much faster)
+    const stepInterval = executionMode === "parallel" ? 650 : 1100;
 
     for (let i = 2; i <= 7; i++) {
       setTimeout(() => {
@@ -318,6 +315,12 @@ export function DetailedSignalAnalysis({
   const priceYMax = (parsedSell * 1.05).toFixed(5);
   const priceYMid = ((parsedSell + parsedBuy) / 2).toFixed(5);
   const priceYMin = (parsedBuy * 0.95).toFixed(5);
+
+  const yMaxNum = parseFloat(priceYMax);
+  const yMinNum = parseFloat(priceYMin);
+  const yRange = yMaxNum - yMinNum || 0.0001;
+  const buyY = Math.max(10, Math.min(230, 240 * (1 - (parsedBuy - yMinNum) / yRange)));
+  const sellY = Math.max(10, Math.min(230, 240 * (1 - (parsedSell - yMinNum) / yRange)));
 
   return (
     <motion.div 
@@ -456,8 +459,8 @@ export function DetailedSignalAnalysis({
                     <p className="text-sm font-extrabold text-emerald-600 mt-0.5">+${(parsedSell - parsedBuy).toFixed(5)}</p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200/60 p-3 rounded-xl text-left">
-                    <span className="text-[9px] text-slate-400 uppercase font-sans font-bold">Слиппедж (Slippage)</span>
-                    <p className="text-sm font-extrabold text-indigo-600 mt-0.5">&lt; {slippage}%</p>
+                    <span className="text-[9px] text-slate-400 uppercase font-sans font-bold">Тип ордеров / Спред</span>
+                    <p className="text-sm font-extrabold text-indigo-600 mt-0.5">{orderType === "market" ? "Market/С ходу" : "Limit / В разрез"}</p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200/60 p-3 rounded-xl text-left">
                     <span className="text-[9px] text-slate-400 uppercase font-sans font-bold">Рейтинг скорости сети</span>
@@ -525,7 +528,28 @@ export function DetailedSignalAnalysis({
                       <circle cx="220" cy="148" r="5" fill="#3b82f6" stroke="white" strokeWidth="2.5" className="shadow-xs" />
                       
                       <line x1="220" y1="5" x2="220" y2="235" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3,3" />
+
+                      {/* Live Market Reference Dashed Lines */}
+                      <line x1="0" y1={buyY} x2="600" y2={buyY} stroke="#10B981" strokeWidth="1.2" strokeDasharray="3,3" opacity="0.7" />
+                      <line x1="0" y1={sellY} x2="600" y2={sellY} stroke="#3b82f6" strokeWidth="1.2" strokeDasharray="3,3" opacity="0.7" />
                     </svg>
+
+                    {/* Live real-time pricing tags floating on the graph */}
+                    <div 
+                      className="absolute right-3 bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[9.5px] font-black px-1.5 py-0.5 rounded-md shadow-xs pointer-events-none z-10 font-mono flex items-center gap-1 transition-all duration-300"
+                      style={{ top: `${(buyY / 240) * 100}%`, transform: 'translateY(-50%)' }}
+                    >
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                      <span>{signal.buyDex}: ${parsedBuy.toFixed(4)}</span>
+                    </div>
+
+                    <div 
+                      className="absolute right-3 bg-blue-50 text-blue-700 border border-blue-200/80 text-[9.5px] font-black px-1.5 py-0.5 rounded-md shadow-xs pointer-events-none z-10 font-mono flex items-center gap-1 transition-all duration-300"
+                      style={{ top: `${(sellY / 240) * 100}%`, transform: 'translateY(-50%)' }}
+                    >
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                      <span>{signal.sellDex}: ${parsedSell.toFixed(4)}</span>
+                    </div>
 
                     {/* Instant hover coordinate indicator widget */}
                     <div className="absolute top-2 left-4 bg-white/95 border border-slate-200/90 p-2.5 rounded-xl text-[9.5px] font-mono leading-tight pointer-events-none z-20 shadow-md space-y-1">
@@ -853,132 +877,149 @@ export function DetailedSignalAnalysis({
                     Управление ценами, расчётами и мгновенным запуском в один клик. Контролируйте ордер в реальном времени.
                   </p>
 
-                  {/* ROUTE GEOMETRY MINIMAP BLOCK */}
-                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 space-y-2 font-mono text-[10.5px]">
-                    <div className="flex justify-between items-center text-slate-400 font-sans text-[9px] uppercase font-bold mb-1">
-                      <span>Транзитный Маршрут</span>
-                      <span>Сеть перевода: {signal.network}</span>
+                  {/* 1. Крупные карточки текущих цен на биржах покупки и продажи */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 text-left space-y-1 shadow-xs">
+                      <div className="flex items-center gap-1.5 flex-nowrap">
+                        <span className="text-[9.5px] font-black text-emerald-600 tracking-wider uppercase block">{signal.buyDex}</span>
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                      </div>
+                      <span className="text-base font-black text-slate-900 font-mono tracking-tight block">
+                        ${parsedBuy.toFixed(4)}
+                      </span>
+                      <span className="text-[9.5px] font-bold text-slate-400 block pb-0.5">Текущая цена покупки</span>
                     </div>
-                    
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex flex-col text-left">
-                        <span className="text-xs font-black text-slate-800">{signal.buyDex}</span>
-                        <span className="text-[9px] text-slate-450 mt-0.5">Покупка</span>
+                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-left space-y-1 shadow-xs">
+                      <div className="flex items-center gap-1.5 flex-nowrap">
+                        <span className="text-[9.5px] font-black text-blue-600 tracking-wider uppercase block">{signal.sellDex}</span>
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
                       </div>
-                      <div className="flex-1 flex flex-col items-center">
-                        <div className="w-full flex items-center justify-center gap-0.5 px-2">
-                          <div className="h-0.5 bg-indigo-200 flex-1" />
-                          <span className="text-[8px] bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold uppercase leading-none font-sans">
-                            Перевод
-                          </span>
-                          <div className="h-0.5 bg-indigo-200 flex-1" />
-                        </div>
-                      </div>
-                      <div className="flex flex-col text-right">
-                        <span className="text-xs font-black text-slate-800">{signal.sellDex}</span>
-                        <span className="text-[9px] text-slate-450 mt-0.5">Продажа</span>
-                      </div>
+                      <span className="text-base font-black text-slate-900 font-mono tracking-tight block">
+                        ${parsedSell.toFixed(4)}
+                      </span>
+                      <span className="text-[9.5px] font-bold text-slate-400 block pb-0.5">Текущая цена продажи</span>
                     </div>
                   </div>
 
-                  {/* INPUT MODULE #1: EDITABLE PRICES WITH EASY +/- BUTTONS FOR SIMULATION */}
-                  <div className="space-y-3 pt-1 border-t border-slate-100">
-                    
-                    {/* Buy Exchange limit price setup */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10.5px] font-bold">
-                        <span className="text-slate-500 font-sans">Цена покупки ({signal.buyDex})</span>
-                        <span className="text-slate-400 font-mono">USDT</span>
-                      </div>
-                      
-                      <div className="relative flex items-center">
-                        <button 
-                          type="button" 
-                          disabled={isExecuting}
-                          onClick={() => adjustNumericInput("buy", -0.0001)}
-                          className="absolute left-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
-                        >
-                          -0.0001
-                        </button>
-                        
-                        <input 
-                          type="text" 
-                          disabled={isExecuting}
-                          value={buyPriceInput}
-                          onChange={(e) => setBuyPriceInput(e.target.value)}
-                          className={`w-full pl-16 pr-16 py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
-                            buyFlash === "up"
-                              ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-500/10"
-                              : buyFlash === "down"
-                                ? "bg-rose-50 border-rose-400 text-rose-700 shadow-xs ring-2 ring-rose-500/10"
-                                : "bg-slate-50 border-slate-200 text-slate-850 focus:bg-white focus:border-indigo-500"
-                          }`}
-                        />
-
-                        <button 
-                          type="button" 
-                          disabled={isExecuting}
-                          onClick={() => adjustNumericInput("buy", 0.0001)}
-                          className="absolute right-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
-                        >
-                          +0.0001
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Sell Exchange limit price setup */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10.5px] font-bold">
-                        <span className="text-slate-500 font-sans">Цена продажи ({signal.sellDex})</span>
-                        <span className="text-slate-400 font-mono">USDT</span>
-                      </div>
-                      
-                      <div className="relative flex items-center">
-                        <button 
-                          type="button" 
-                          disabled={isExecuting}
-                          onClick={() => adjustNumericInput("sell", -0.0001)}
-                          className="absolute left-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
-                        >
-                          -0.0001
-                        </button>
-                        
-                        <input 
-                          type="text" 
-                          disabled={isExecuting}
-                          value={sellPriceInput}
-                          onChange={(e) => setSellPriceInput(e.target.value)}
-                          className={`w-full pl-16 pr-16 py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
-                            sellFlash === "up"
-                              ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-500/10"
-                              : sellFlash === "down"
-                                ? "bg-rose-50 border-rose-400 text-rose-700 shadow-xs ring-2 ring-rose-500/10"
-                                : "bg-slate-50 border-slate-200 text-slate-850 focus:bg-white focus:border-indigo-500"
-                          }`}
-                        />
-
-                        <button 
-                          type="button" 
-                          disabled={isExecuting}
-                          onClick={() => adjustNumericInput("sell", 0.0001)}
-                          className="absolute right-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
-                        >
-                          +0.0001
-                        </button>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* INPUT MODULE #2: ORDER SIZING INVESTMENT (USDT AMOUNT) */}
-                  <div className="space-y-2 pt-1">
-                    <div className="flex justify-between items-center text-[10.5px] font-bold">
-                      <span className="text-slate-500 font-sans">Сумма арбитражного ордера</span>
-                      <span className="text-slate-400 font-mono">
-                        Доступно: <span className="font-extrabold text-slate-800">{balance.toFixed(2)} USDT</span>
+                  {/* 2. 3 Columns Metrics (СПРЕД / ПРОФИТ / ROI) */}
+                  <div className="grid grid-cols-3 gap-2 py-3 bg-slate-50 border border-slate-100 rounded-2xl px-3.5">
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">Спред</span>
+                      <span className={`text-sm font-black font-mono block text-left ${spreadPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                        {spreadPct >= 0 ? "+" : ""}{spreadPct.toFixed(2)}%
                       </span>
                     </div>
+                    <div className="space-y-0.5 border-l border-slate-200/50 pl-3">
+                      <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">Профит</span>
+                      <span className={`text-sm font-black font-mono block text-left ${netProfit >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                        {netProfit >= 0 ? "+" : ""}${netProfit.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="space-y-0.5 border-l border-slate-200/50 pl-3">
+                      <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">ROI</span>
+                      <span className={`text-sm font-black font-mono block text-left ${roiPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                        {roiPct >= 0 ? "+" : ""}{roiPct.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
 
+                  {/* 3. Standard Fee Details panel row */}
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 px-1 pt-0.5 font-sans text-left">
+                    <span>Комиссии бирж (taker x 2)</span>
+                    <span className="font-mono font-extrabold text-slate-700">
+                      0.0120 USDT ≈ 0.20%
+                    </span>
+                  </div>
+
+                  {/* 4. Price setup module (editable Buy & Sell rates) */}
+                  <div className="space-y-1.5 pt-1 text-left">
+                    <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Цены перед запуском</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center px-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 font-sans block">Покупка ({signal.buyDex})</label>
+                          <span className="text-[9.5px] font-extrabold text-slate-400 font-mono">Тек: {parsedBuy.toFixed(4)}</span>
+                        </div>
+                        <div className="relative flex items-center">
+                          <button 
+                            type="button" 
+                            disabled={isExecuting}
+                            onClick={() => adjustNumericInput("buy", -0.0001)}
+                            className="absolute left-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
+                          >
+                            -0.0001
+                          </button>
+                          <input 
+                            type="text" 
+                            disabled={isExecuting}
+                            value={buyPriceInput}
+                            onChange={(e) => setBuyPriceInput(e.target.value)}
+                            className={`w-full pl-16 pr-16 py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
+                              buyFlash === "up"
+                                ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-500/10"
+                                : buyFlash === "down"
+                                  ? "bg-rose-50 border-rose-400 text-rose-700 shadow-xs ring-2 ring-rose-500/10"
+                                  : "bg-slate-50 border-slate-200 text-slate-850 focus:bg-white focus:border-indigo-500"
+                            }`}
+                          />
+                          <button 
+                            type="button" 
+                            disabled={isExecuting}
+                            onClick={() => adjustNumericInput("buy", 0.0001)}
+                            className="absolute right-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
+                          >
+                            +0.0001
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center px-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 font-sans block">Продажа ({signal.sellDex})</label>
+                          <span className="text-[9.5px] font-extrabold text-slate-400 font-mono">Тек: {parsedSell.toFixed(4)}</span>
+                        </div>
+                        <div className="relative flex items-center">
+                          <button 
+                            type="button" 
+                            disabled={isExecuting}
+                            onClick={() => adjustNumericInput("sell", -0.0001)}
+                            className="absolute left-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
+                          >
+                            -0.0001
+                          </button>
+                          <input 
+                            type="text" 
+                            disabled={isExecuting}
+                            value={sellPriceInput}
+                            onChange={(e) => setSellPriceInput(e.target.value)}
+                            className={`w-full pl-16 pr-16 py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
+                              sellFlash === "up"
+                                ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-500/10"
+                                : sellFlash === "down"
+                                  ? "bg-rose-50 border-rose-400 text-rose-700 shadow-xs ring-2 ring-rose-500/10"
+                                  : "bg-slate-50 border-slate-200 text-slate-850 focus:bg-white focus:border-indigo-500"
+                            }`}
+                          />
+                          <button 
+                            type="button" 
+                            disabled={isExecuting}
+                            onClick={() => adjustNumericInput("sell", 0.0001)}
+                            className="absolute right-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
+                          >
+                            +0.0001
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 5. SUM INPUT BOX MODULE with balance and preset percentages */}
+                  <div className="space-y-2 pt-1 text-left">
+                    <div className="flex justify-between items-center text-[10.5px] font-bold font-sans">
+                      <span className="text-slate-500">Сумма арбитражного ордера</span>
+                      <span className="text-slate-400 font-mono">
+                        Доступно: <span className="font-extrabold text-slate-855">{balance.toFixed(2)} USDT</span>
+                      </span>
+                    </div>
                     <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-3 focus-within:border-indigo-400 transition-all">
                       <div className="flex items-center justify-between gap-1">
                         <input 
@@ -990,7 +1031,7 @@ export function DetailedSignalAnalysis({
                           placeholder="Сумма"
                         />
                         <div className="flex flex-col items-end flex-shrink-0 font-mono">
-                          <span className="text-xs font-extrabold text-slate-800">USDT</span>
+                          <span className="text-xs font-extrabold text-slate-800">{quoteToken}</span>
                           {parsedSum > 0 && (
                             <span className="text-[9px] font-bold text-rose-500 mt-0.5">
                               ком. -{totalTakerFees.toFixed(3)}
@@ -999,7 +1040,7 @@ export function DetailedSignalAnalysis({
                         </div>
                       </div>
 
-                      {/* Sizing presets selectors */}
+                      {/* Percentage buttons */}
                       <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-200/40">
                         {[0.25, 0.50, 0.75, 1.0].map((pct) => (
                           <button
@@ -1016,76 +1057,170 @@ export function DetailedSignalAnalysis({
                     </div>
                   </div>
 
-                  {/* INPUT MODULE #3: DYNAMIC CONFIG PARAMETERS (SLIPPAGE & GAS) */}
+                  {/* CEX order config selectors row */}
                   <div className="grid grid-cols-2 gap-3 pt-1">
-                    
-                    {/* Slippage setting */}
+                    {/* Order Type */}
                     <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-450 block">Допуск проскальзывания</span>
+                      <span className="text-[10px] font-bold text-slate-455 block">Тип ордеров на CEX</span>
                       <div className="relative flex items-center">
                         <select
                           disabled={isExecuting}
-                          value={slippage}
-                          onChange={(e) => setSlippage(parseFloat(e.target.value))}
-                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-800 focus:outline-none cursor-pointer appearance-none animate-none"
+                          value={orderType}
+                          onChange={(e) => setOrderType(e.target.value as any)}
+                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-800 focus:outline-none cursor-pointer"
                         >
-                          <option value="0.1">0.1% (Safe)</option>
-                          <option value="0.5">0.5% (Standard)</option>
-                          <option value="1.0">1.0% (Aggressive)</option>
-                          <option value="1.5">1.5% (Risky)</option>
+                          <option value="market">Market (Мгновенно)</option>
+                          <option value="limit">Limit (Лимит-ордер)</option>
                         </select>
                       </div>
                     </div>
 
-                    {/* Gas choice Priority option */}
+                    {/* Execution Mode */}
                     <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-450 block">Приоритет транзакции</span>
+                      <span className="text-[10px] font-bold text-slate-455 block">Режим исполнения</span>
                       <div className="relative flex items-center">
                         <select
                           disabled={isExecuting}
-                          value={gasPriority}
-                          onChange={(e) => setGasPriority(e.target.value as any)}
-                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-850 focus:outline-none cursor-pointer"
+                          value={executionMode}
+                          onChange={(e) => setExecutionMode(e.target.value as any)}
+                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-855 focus:outline-none cursor-pointer"
                         >
-                          <option value="eco">Эконом (0.5x)</option>
-                          <option value="normal">Стандарт (1.0x)</option>
-                          <option value="priority">Экспресс-приоритет</option>
+                          <option value="sequential">Последовательно (Safe)</option>
+                          <option value="parallel">Параллельно (Fast)</option>
                         </select>
                       </div>
                     </div>
-
                   </div>
 
-                  {/* FINANCIAL PROJECTION OUTCOME CARD */}
-                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4.5 space-y-2 text-left">
-                    <span className="text-[9px] font-black text-emerald-800 tracking-wider uppercase font-mono block">
-                      Расчет плановой окупаемости круга
-                    </span>
-                    
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-xs font-bold text-slate-500">Ожидаемый профит:</span>
-                      <div className="text-right font-mono">
-                        <span className="text-xl font-black text-emerald-600 block">
-                          +{netProfit.toFixed(4)} USDT
-                        </span>
-                        {hasInputAmount && (
-                          <span className="text-[10px] font-bold text-slate-400">
-                            ROI ≈ {roiPct.toFixed(2)}%
-                          </span>
-                        )}
+                  {/* 6. Route Diagram Map Panel */}
+                  <div className="space-y-1.5 text-left">
+                    <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Маршрут</span>
+                    <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 space-y-2 font-mono text-[10.5px]">
+                      <div className="flex justify-between items-center text-slate-400 font-sans text-[9px] uppercase font-bold mb-1">
+                        <span>Транзитный Маршрут</span>
+                        <span>Сеть перевода: {signal.network}</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-1 pt-1.5">
+                        <div className="flex flex-col text-left">
+                          <span className="text-xs font-black text-slate-800">{signal.buyDex}</span>
+                          <span className="text-[9px] text-slate-450 mt-0.5 font-sans">Покупка</span>
+                        </div>
+                        <div className="flex-1 flex flex-col items-center">
+                          <div className="w-full flex items-center justify-center gap-0.5 px-2">
+                            <div className="h-0.5 bg-indigo-200 flex-1" />
+                            <span className="text-[8px] bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold uppercase leading-none font-sans">
+                              Перевод
+                            </span>
+                            <div className="h-0.5 bg-indigo-200 flex-1" />
+                          </div>
+                        </div>
+                        <div className="flex flex-col text-right">
+                          <span className="text-xs font-black text-slate-800">{signal.sellDex}</span>
+                          <span className="text-[9px] text-slate-450 mt-0.5 font-sans">Продажа</span>
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Micro breakdowns list info */}
-                    <div className="pt-2 border-t border-emerald-200/30 text-[10px] font-mono text-slate-500 space-y-1 font-sans">
-                      <div className="flex justify-between">
-                        <span>Сбор за вывод/перевод:</span>
-                        <span className="font-bold text-slate-800">${networkFee.toFixed(4)}</span>
+                  {/* Important notice block below route */}
+                  <div className="p-3 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2 text-[10px] text-amber-800 leading-relaxed font-sans text-left">
+                    <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
+                    <p className="font-medium font-sans">
+                      <span className="font-extrabold text-amber-900 block mb-0.5">Важно:</span>
+                      перед выводом на <span className="font-extrabold text-slate-850">{signal.sellDex}</span> нужно один раз подтвердить адрес кошелька депозита в настройках белого списка в личном кабинете.
+                    </p>
+                  </div>
+
+                  {/* 7. Detailed Spec Params table (ПАРАМЕТРЫ) */}
+                  <div className="space-y-1.5 pt-2 text-left">
+                    <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Параметры</span>
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-[10.5px] text-left">
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
+                        <span className="font-semibold text-slate-500 font-sans">Ликвидность</span>
+                        <span className="font-bold text-emerald-500 uppercase font-sans">Высокая</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Сборы бирж (Taker fees):</span>
-                        <span className="font-bold text-slate-800">${totalTakerFees.toFixed(4)}</span>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
+                        <span className="font-semibold text-slate-500 font-sans">Signal ID</span>
+                        <span className="font-bold text-slate-800">#{signal.id || "f554ba7"}</span>
                       </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
+                        <span className="font-semibold text-slate-500 font-sans">Сеть</span>
+                        <span className="font-bold text-slate-800 uppercase font-mono">{signal.network}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
+                        <span className="font-semibold text-slate-500 font-sans">Мин. вывод</span>
+                        <span className="font-bold text-slate-800 font-sans">5 {baseToken}</span>
+                      </div>
+                      <div className="flex justify-between items-center font-mono">
+                        <span className="font-semibold text-slate-500 font-sans">Комиссия сети</span>
+                        <span className="font-bold text-slate-800 font-sans">${networkFee.toFixed(4)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 8. Spec flow layout: ЧТО ПРОИЗОЙДЕТ */}
+                  <div className="space-y-2 pt-2 text-left">
+                    <div className="flex justify-between items-center px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <span>Что произойдет</span>
+                      <span className="font-mono text-[9px] lowercase">~78с</span>
+                    </div>
+
+                    {/* Vertically chained sequence */}
+                    <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3.5 relative overflow-hidden text-left">
+                      
+                      {/* Top Balance Banner */}
+                      <div className="flex items-center gap-2 pb-2.5 border-b border-slate-200/50 text-emerald-600 font-sans text-[11px] font-extrabold">
+                        <Check size={13} className="stroke-[3] text-emerald-500" />
+                        <span>Баланс подтверждён · {balance.toFixed(2)} USDT</span>
+                      </div>
+
+                      {/* Step-by-Step rendering */}
+                      {(() => {
+                        const steps = [
+                          { id: 1, text: `Выставление ордера на покупку (${signal.buyDex})` },
+                          { id: 2, text: `Исполнение ордера на покупку (${signal.buyDex})` },
+                          { id: 3, text: `Перевод токена по сети ${signal.network}` },
+                          { id: 4, text: `Зачисление токенов на ${signal.sellDex}` },
+                          { id: 5, text: `Выставление ордера на продажу (${signal.sellDex})` },
+                          { id: 6, text: `Исполнение ордера на продажу (${signal.sellDex})` }
+                        ];
+
+                        return steps.map((st) => {
+                          const isCompleted = executionStep > st.id || (!isExecuting && executionStep === 7);
+                          const isActive = isExecuting && executionStep === st.id;
+
+                          return (
+                            <div key={st.id} className="flex items-center gap-3 relative z-10">
+                              {/* Icon Indicator */}
+                              {isCompleted ? (
+                                <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-4xs font-black text-xs">
+                                  ✓
+                                </div>
+                              ) : isActive ? (
+                                <div className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
+                                  <div className="absolute inset-0 rounded-full border-2 border-indigo-100" />
+                                  <div className="absolute inset-0 rounded-full border-2 border-t-indigo-500 border-r-indigo-500 animate-spin" />
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border-2 border-slate-100 bg-slate-50/60 flex-shrink-0" />
+                              )}
+
+                              {/* Text label */}
+                              <span className={`text-[11px] transition-all duration-200 ${
+                                isActive 
+                                  ? "text-slate-900 font-extrabold" 
+                                  : isCompleted 
+                                    ? "text-slate-800 font-medium" 
+                                    : "text-slate-350 font-semibold"
+                              }`}>
+                                {st.text}
+                              </span>
+                            </div>
+                          );
+                        });
+                      })()}
+
                     </div>
                   </div>
 

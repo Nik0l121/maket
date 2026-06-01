@@ -49,6 +49,8 @@ export function SignalDrawer(props: {
   // State for balance
   const [balance, setBalance] = useState<number>(11.72);
   const [confirmed, setConfirmed] = useState<boolean>(true);
+  const [orderType, setOrderType] = useState<"market" | "limit">("market");
+  const [executionMode, setExecutionMode] = useState<"parallel" | "sequential">("sequential");
 
   // Keep track of previous prices to show green/red flashes on change
   const prevBuyRef = useRef<string>(signal.buyPrice);
@@ -136,8 +138,9 @@ export function SignalDrawer(props: {
   const baseToken = signal.pair.split("/")[0] || "TOK";
   const quoteToken = signal.pair.split("/")[1] || "USDT";
 
-  // Fee factors based on current network
-  const networkFee = signal.network === "BERA" ? 0.0001 : signal.network === "SOLANA" ? 0.0005 : signal.network === "ETHW" ? 0.02 : 0.001;
+  // Fee factors based on current network and priority (standard withdrawal fee)
+  const baseNetworkFee = signal.network === "BERA" ? 0.0001 : signal.network === "SOLANA" ? 0.0005 : signal.network === "ETHW" ? 0.02 : 0.001;
+  const networkFee = baseNetworkFee;
   const parsedBuy = parseFloat(buyPriceInput) || 0.0001;
   const parsedSell = parseFloat(sellPriceInput) || 0.0001;
   const parsedSum = parseFloat(sumInput) || 0;
@@ -251,9 +254,9 @@ export function SignalDrawer(props: {
               {baseToken}
             </div>
             <div>
-              <div className="flex items-center gap-1.5 flex-nowrap">
-                <span className="text-base font-black text-slate-900 tracking-tight">{signal.pair}</span>
-                <span className="text-[9.5px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200/50 rounded-md flex items-center gap-1">
+              <div className="flex items-center gap-1.5 flex-nowrap font-mono">
+                <span className="text-sm font-extrabold text-slate-900 tracking-tight uppercase">{signal.pair}</span>
+                <span className="text-[9.5px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-250 rounded-md flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
                   LIVE
                 </span>
@@ -273,29 +276,29 @@ export function SignalDrawer(props: {
         </div>
 
         {/* Custom Tab Selection Header */}
-        <div className="px-5 pt-3 border-b border-slate-100 bg-white flex gap-4 text-xs font-bold font-sans">
+        <div className="px-5 pt-3 border-b border-slate-100 bg-white flex gap-4 text-[11px] font-sans font-extrabold uppercase tracking-wider">
           <button
             type="button"
             onClick={() => setActiveDrawerTab("launch")}
-            className={`pb-2.5 transition-all text-left relative cursor-pointer ${
+            className={`pb-2.5 transition-all text-left relative cursor-pointer select-none ${
               activeDrawerTab === "launch" 
                 ? "text-blue-600 font-extrabold border-b-2 border-blue-600" 
-                : "text-slate-400 hover:text-slate-600"
+                : "text-slate-400 hover:text-slate-650"
             }`}
           >
-            К ЗАПУСКУ
+            Запуск
           </button>
           <button
             type="button"
             disabled={isExecuting}
             onClick={() => setActiveDrawerTab("decision")}
-            className={`pb-2.5 transition-all text-left relative cursor-pointer ${
+            className={`pb-2.5 transition-all text-left relative cursor-pointer select-none ${
               activeDrawerTab === "decision" 
                 ? "text-blue-600 font-extrabold border-b-2 border-blue-600" 
-                : "text-slate-400 hover:text-slate-600"
+                : "text-slate-400 hover:text-slate-650"
             }`}
           >
-            РЕШЕНИЕ
+            Решение
           </button>
         </div>
 
@@ -314,106 +317,81 @@ export function SignalDrawer(props: {
               >
                 {/* Intro status alert card heading */}
                 <div className="space-y-1 text-left">
-                  <h3 className="text-sm font-black text-slate-800">Профит уверенный — можно запускать</h3>
-                  <p className="text-[11px] text-slate-400 font-bold leading-normal">
+                  <h3 className="text-xs font-extrabold text-slate-850">Профит уверенный — можно запускать</h3>
+                  <p className="text-[10.5px] text-slate-450 leading-relaxed font-sans font-medium">
                     Все проверки пройдены, спред живой, комиссия минимальная.
                   </p>
                 </div>
 
-                {/* 3 Columns Metrics (СПРЕД / ПРОФИТ / ROI) */}
+                {/* 1. Крупные карточки текущих цен на биржах покупки и продажи */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 text-left space-y-1 shadow-xs">
+                    <div className="flex items-center gap-1.5 flex-nowrap">
+                      <span className="text-[9.5px] font-black text-emerald-600 tracking-wider uppercase block">{signal.buyDex}</span>
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    </div>
+                    <span className="text-base font-black text-slate-900 font-mono tracking-tight block">
+                      ${parseFloat(signal.buyPrice).toFixed(4)}
+                    </span>
+                    <span className="text-[9.5px] font-bold text-slate-400 block pb-0.5">Текущая цена покупки</span>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-left space-y-1 shadow-xs">
+                    <div className="flex items-center gap-1.5 flex-nowrap">
+                      <span className="text-[9.5px] font-black text-blue-600 tracking-wider uppercase block">{signal.sellDex}</span>
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                    </div>
+                    <span className="text-base font-black text-slate-900 font-mono tracking-tight block">
+                      ${parseFloat(signal.sellPrice).toFixed(4)}
+                    </span>
+                    <span className="text-[9.5px] font-bold text-slate-400 block pb-0.5">Текущая цена продажи</span>
+                  </div>
+                </div>
+
+                {/* 2. 3 Columns Metrics (СПРЕД / ПРОФИТ / ROI) */}
                 <div className="grid grid-cols-3 gap-2 py-3 bg-slate-50 border border-slate-100 rounded-2xl px-3.5">
                   <div className="space-y-0.5">
                     <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">Спред</span>
-                    <span className={`text-sm sm:text-base font-black font-mono block text-left ${spreadPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    <span className={`text-sm font-black font-mono block text-left ${spreadPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                       {spreadPct >= 0 ? "+" : ""}{spreadPct.toFixed(2)}%
                     </span>
                   </div>
                   <div className="space-y-0.5 border-l border-slate-200/50 pl-3">
                     <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">Профит</span>
-                    <span className={`text-sm sm:text-base font-black font-mono block text-left ${netProfit >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    <span className={`text-sm font-black font-mono block text-left ${netProfit >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                       {netProfit >= 0 ? "+" : ""}${netProfit.toFixed(2)}
                     </span>
                   </div>
                   <div className="space-y-0.5 border-l border-slate-200/50 pl-3">
                     <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">ROI</span>
-                    <span className={`text-sm sm:text-base font-black font-mono block text-left ${roiPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    <span className={`text-sm font-black font-mono block text-left ${roiPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                       {roiPct >= 0 ? "+" : ""}{roiPct.toFixed(2)}%
                     </span>
                   </div>
                 </div>
 
-                {/* Route Diagram Map Panel */}
-                <div className="space-y-1.5 text-left">
-                  <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Маршрут</span>
-                  <div className="grid grid-cols-11 gap-1 items-center bg-white border border-slate-200 rounded-2xl p-3.5">
-                    
-                    {/* Source DEX */}
-                    <div className="col-span-3 flex flex-col justify-center items-center text-center space-y-0.5">
-                      <span className="text-[10px] font-black text-emerald-500 font-mono uppercase bg-emerald-50 border border-emerald-100/50 px-2 py-0.5 rounded-md">
-                        {signal.buyDex}
-                      </span>
-                      <span className="font-mono font-bold text-[10px] text-slate-800 pt-1">
-                        {parseFloat(buyPriceInput).toFixed(4)}
-                      </span>
-                      <span className="text-[8.5px] font-bold text-slate-400 block uppercase">Покупка</span>
-                    </div>
-
-                    {/* Bridge Arrow */}
-                    <div className="col-span-1 flex justify-center text-slate-350">
-                      →
-                    </div>
-
-                    {/* Network details */}
-                    <div className="col-span-3 flex flex-col justify-center items-center text-center space-y-0.5">
-                      <span className="text-[9.5px] font-black text-slate-805 font-sans tracking-wide uppercase">
-                        {signal.network}
-                      </span>
-                      <span className="text-[8.5px] font-mono font-bold text-slate-400">
-                        fee ${networkFee.toFixed(4)}
-                      </span>
-                      <span className="text-[8.5px] font-bold text-slate-400 block uppercase">~30c</span>
-                    </div>
-
-                    {/* Bridge Arrow */}
-                    <div className="col-span-1 flex justify-center text-slate-350">
-                      →
-                    </div>
-
-                    {/* Destination DEX */}
-                    <div className="col-span-3 flex flex-col justify-center items-center text-center space-y-0.5">
-                      <span className="text-[10px] font-black text-blue-600 font-mono uppercase bg-blue-50 border border-blue-100/50 px-2 py-0.5 rounded-md">
-                        {signal.sellDex}
-                      </span>
-                      <span className="font-mono font-bold text-[10px] text-slate-800 pt-1">
-                        {parseFloat(sellPriceInput).toFixed(4)}
-                      </span>
-                      <span className="text-[8.5px] font-bold text-slate-400 block uppercase">Продажа</span>
-                    </div>
-
-                  </div>
+                {/* 3. Standard Fee Details panel row */}
+                <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 px-1 pt-0.5 font-sans text-left">
+                  <span>Комиссии бирж (taker x 2)</span>
+                  <span className="font-mono font-extrabold text-slate-700">
+                    0.0120 USDT ≈ 0.20%
+                  </span>
                 </div>
 
-                {/* Important notice block below route */}
-                <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2.5 text-[10.5px] text-amber-805 leading-relaxed font-sans text-left">
-                  <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-amber-600" />
-                  <p className="font-semibold font-sans">
-                    <span className="font-black text-amber-900 block mb-0.5">Важно:</span>
-                    перед выводом на <span className="font-black text-slate-800">{signal.sellDex}</span> нужно один раз подтвердить адрес кошелька депозита в настройках белого списка в личном кабинете.
-                  </p>
-                </div>
-
-                {/* Price setup module (editable Buy & Sell rates) */}
+                {/* 4. Price setup module (editable Buy & Sell rates) */}
                 <div className="space-y-1.5 pt-1 text-left">
                   <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Цены перед запуском</span>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 block">Цена покупки ({signal.buyDex})</label>
+                      <div className="flex justify-between items-center px-1">
+                        <label className="text-[10.5px] font-bold text-slate-500 font-sans block">Покупка ({signal.buyDex})</label>
+                        <span className="text-[9.5px] font-extrabold text-slate-400 font-mono">Тек: {parseFloat(signal.buyPrice).toFixed(4)}</span>
+                      </div>
                       <div className="relative flex items-center">
                         <button 
                           type="button" 
                           disabled={isExecuting}
                           onClick={() => adjustNumericInput("buy", -0.0001)}
-                          className="absolute left-1 text-[8px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-1 rounded transition-all cursor-pointer select-none"
+                          className="absolute left-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
                         >
                           -0.0001
                         </button>
@@ -422,32 +400,35 @@ export function SignalDrawer(props: {
                           disabled={isExecuting}
                           value={buyPriceInput}
                           onChange={(e) => setBuyPriceInput(e.target.value)}
-                          className={`w-full pl-[46px] pr-[46px] py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
+                          className={`w-full pl-16 pr-16 py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
                             buyFlash === "up"
                               ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-500/10"
                               : buyFlash === "down"
                                 ? "bg-rose-50 border-rose-400 text-rose-700 shadow-xs ring-2 ring-rose-500/10"
-                                : "bg-slate-50 border-slate-200 text-slate-800 focus:bg-white focus:border-blue-500"
+                                : "bg-slate-50 border-slate-200 text-slate-850 focus:bg-white focus:border-indigo-500"
                           }`}
                         />
                         <button 
                           type="button" 
                           disabled={isExecuting}
                           onClick={() => adjustNumericInput("buy", 0.0001)}
-                          className="absolute right-1 text-[8px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-1 rounded transition-all cursor-pointer select-none"
+                          className="absolute right-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
                         >
                           +0.0001
                         </button>
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 block">Цена продажи ({signal.sellDex})</label>
+                      <div className="flex justify-between items-center px-1">
+                        <label className="text-[10.5px] font-bold text-slate-500 font-sans block">Продажа ({signal.sellDex})</label>
+                        <span className="text-[9.5px] font-extrabold text-slate-400 font-mono">Тек: {parseFloat(signal.sellPrice).toFixed(4)}</span>
+                      </div>
                       <div className="relative flex items-center">
                         <button 
                           type="button" 
                           disabled={isExecuting}
                           onClick={() => adjustNumericInput("sell", -0.0001)}
-                          className="absolute left-1 text-[8px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-1 rounded transition-all cursor-pointer select-none"
+                          className="absolute left-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
                         >
                           -0.0001
                         </button>
@@ -456,19 +437,19 @@ export function SignalDrawer(props: {
                           disabled={isExecuting}
                           value={sellPriceInput}
                           onChange={(e) => setSellPriceInput(e.target.value)}
-                          className={`w-full pl-[46px] pr-[46px] py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
+                          className={`w-full pl-16 pr-16 py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
                             sellFlash === "up"
                               ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-500/10"
                               : sellFlash === "down"
                                 ? "bg-rose-50 border-rose-400 text-rose-700 shadow-xs ring-2 ring-rose-500/10"
-                                : "bg-slate-50 border-slate-200 text-slate-800 focus:bg-white focus:border-blue-500"
+                                : "bg-slate-50 border-slate-200 text-slate-850 focus:bg-white focus:border-indigo-500"
                           }`}
                         />
                         <button 
                           type="button" 
                           disabled={isExecuting}
                           onClick={() => adjustNumericInput("sell", 0.0001)}
-                          className="absolute right-1 text-[8px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-1 rounded transition-all cursor-pointer select-none"
+                          className="absolute right-1.5 text-[9.5px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-all cursor-pointer select-none"
                         >
                           +0.0001
                         </button>
@@ -477,29 +458,29 @@ export function SignalDrawer(props: {
                   </div>
                 </div>
 
-                {/* SUM INPUT BOX MODULE with balance and preset percentages */}
-                <div className="space-y-1.5 pt-1 text-left">
-                  <div className="flex justify-between items-center px-1 text-[10.5px] font-bold">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Сумма ордера</span>
-                    <span className="text-slate-505">
-                      Баланс: <span className="font-black text-slate-800">{balance.toFixed(2)} USDT</span>
+                {/* 5. SUM INPUT BOX MODULE with balance and preset percentages */}
+                <div className="space-y-2 pt-1 text-left">
+                  <div className="flex justify-between items-center text-[10.5px] font-bold font-sans">
+                    <span className="text-slate-500">Сумма арбитражного ордера</span>
+                    <span className="text-slate-400 font-mono">
+                      Доступно: <span className="font-extrabold text-slate-855">{balance.toFixed(2)} USDT</span>
                     </span>
                   </div>
-                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-3">
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-3 focus-within:border-indigo-400 transition-all">
                     <div className="flex items-center justify-between gap-1">
                       <input 
                         type="text"
                         disabled={isExecuting}
                         value={sumInput}
                         onChange={(e) => setSumInput(e.target.value)}
-                        className="bg-transparent border-0 p-0 text-xl font-black text-slate-800 focus:ring-0 focus:outline-none w-[60%] font-mono"
-                        placeholder="11.72"
+                        className="bg-transparent border-0 p-0 text-lg font-black text-slate-850 focus:ring-0 focus:outline-none w-[60%] font-mono"
+                        placeholder="Сумма"
                       />
-                      <div className="flex flex-col items-end flex-shrink-0">
-                        <span className="text-sm font-black text-slate-550 font-mono">{quoteToken}</span>
+                      <div className="flex flex-col items-end flex-shrink-0 font-mono">
+                        <span className="text-xs font-extrabold text-slate-800">{quoteToken}</span>
                         {parsedSum > 0 && (
-                          <span className="text-[10px] font-bold text-rose-550 font-mono mt-0.5">
-                            → -{totalTakerFees.toFixed(3)} USDT
+                          <span className="text-[9px] font-bold text-rose-500 mt-0.5">
+                            ком. -{totalTakerFees.toFixed(3)}
                           </span>
                         )}
                       </div>
@@ -513,16 +494,136 @@ export function SignalDrawer(props: {
                           type="button"
                           disabled={isExecuting}
                           onClick={() => handlePercentClick(pct)}
-                          className="py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[10px] font-black text-slate-500 hover:text-slate-800 active:scale-95 transition-all text-center uppercase cursor-pointer"
+                          className="py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[10px] font-black text-slate-550 select-none cursor-pointer transition-all active:scale-95 text-center uppercase"
                         >
                           {pct === 1.0 ? "MAX" : `${pct * 100}%`}
                         </button>
                       ))}
                     </div>
                   </div>
+
+                  {/* CEX order config selectors row */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    {/* Order Type */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-455 block">Тип ордеров на CEX</span>
+                      <div className="relative flex items-center">
+                        <select
+                          disabled={isExecuting}
+                          value={orderType}
+                          onChange={(e) => setOrderType(e.target.value as any)}
+                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="market">Market (Мгновенно)</option>
+                          <option value="limit">Limit (Лимит-ордер)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Execution Mode */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-455 block">Режим исполнения</span>
+                      <div className="relative flex items-center">
+                        <select
+                          disabled={isExecuting}
+                          value={executionMode}
+                          onChange={(e) => setExecutionMode(e.target.value as any)}
+                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-850 focus:outline-none cursor-pointer"
+                        >
+                          <option value="sequential">Последовательно (Safe)</option>
+                          <option value="parallel">Параллельно (Fast)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Simulated Steps Animation block "ЧТО ПРОИЗОЙДЕТ" */}
+                {/* 6. Route Diagram Map Panel */}
+                <div className="space-y-1.5 text-left">
+                  <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Маршрут</span>
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 space-y-2 font-mono text-[10.5px]">
+                    <div className="flex justify-between items-center text-slate-400 font-sans text-[9px] uppercase font-bold mb-1">
+                      <span>Транзитный Маршрут</span>
+                      <span>Сеть перевода: {signal.network}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-1 pt-1.5">
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-black text-slate-800">{signal.buyDex}</span>
+                        <span className="text-[9px] text-slate-450 mt-0.5 font-sans">Покупка</span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center">
+                        <div className="w-full flex items-center justify-center gap-0.5 px-2">
+                          <div className="h-0.5 bg-blue-200 flex-1" />
+                          <span className="text-[8px] bg-blue-50 border border-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase leading-none font-sans">
+                            Перевод
+                          </span>
+                          <div className="h-0.5 bg-blue-200 flex-1" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col text-right">
+                        <span className="text-xs font-black text-slate-800">{signal.sellDex}</span>
+                        <span className="text-[9px] text-slate-450 mt-0.5 font-sans">Продажа</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Important notice block below route */}
+                <div className="p-3 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2 text-[10px] text-amber-800 leading-relaxed font-sans text-left">
+                  <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
+                  <p className="font-medium font-sans">
+                    <span className="font-extrabold text-amber-900 block mb-0.5">Важно:</span>
+                    перед выводом на <span className="font-extrabold text-slate-850">{signal.sellDex}</span> нужно один раз подтвердить адрес кошелька депозита в настройках белого списка в личном кабинете.
+                  </p>
+                </div>
+
+                {/* 7. Detailed Spec Params table (ПАРАМЕТРЫ) */}
+                <div className="space-y-1.5 pt-2 text-left">
+                  <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Параметры</span>
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-[10.5px] text-left">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
+                      <span className="font-semibold text-slate-500 font-sans">Ликвидность</span>
+                      <span className="font-bold text-emerald-500 uppercase font-sans">Высокая</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
+                      <span className="font-semibold text-slate-500 font-sans">Signal ID</span>
+                      <span className="font-bold text-slate-800">#{signal.id || "f554ba7"}</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
+                      <span className="font-semibold text-slate-500 font-sans">Сеть</span>
+                      <span className="font-bold text-slate-800 uppercase font-mono">{signal.network}</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
+                      <span className="font-semibold text-slate-500 font-sans">Мин. вывод</span>
+                      <span className="font-bold text-slate-800 font-sans">5 {baseToken}</span>
+                    </div>
+                    <div className="flex justify-between items-center font-mono">
+                      <span className="font-semibold text-slate-500 font-sans">Комиссия сети</span>
+                      <span className="font-bold text-slate-800 font-sans">${networkFee.toFixed(4)}</span>
+                    </div>
+
+                    <div className="pt-2 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onShowFullAnalysis) {
+                            onShowFullAnalysis(signal);
+                            onClose();
+                          } else {
+                            setShowFullAnalysis(true);
+                          }
+                        }}
+                        className="text-blue-500 hover:text-blue-600 font-black text-[10.5px] inline-flex items-center gap-1 transition-all cursor-pointer font-sans"
+                      >
+                        Полный анализ
+                        <ArrowUpRight size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 8. Simulated Steps Animation block "ЧТО ПРОИЗОЙДЕТ" */}
                 <div className="space-y-2 pt-2 text-left">
                   <div className="flex justify-between items-center px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     <span>Что произойдет</span>
@@ -587,59 +688,6 @@ export function SignalDrawer(props: {
                   </div>
                 </div>
 
-                {/* Standard Fee Details panel row */}
-                <div className="flex justify-between items-center text-[10.5px] font-bold text-slate-400 px-1 pt-1 font-sans text-left">
-                  <span>Комиссии бирж (taker x 2)</span>
-                  <span className="font-mono font-black text-slate-700">
-                    0.0120 USDT ≈ 0.20%
-                  </span>
-                </div>
-
-                {/* Detailed Spec Params table (ПАРАМЕТРЫ) */}
-                <div className="space-y-1.5 pt-2 text-left">
-                  <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Параметры</span>
-                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-xs text-left">
-                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
-                      <span className="font-bold text-slate-400">Ликвидность</span>
-                      <span className="font-black text-emerald-500 uppercase font-sans">Высокая</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
-                      <span className="font-bold text-slate-400 font-sans">Signal ID</span>
-                      <span className="font-black text-slate-800">#{signal.id || "f554ba7"}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
-                      <span className="font-bold text-slate-400 font-sans">Сеть</span>
-                      <span className="font-black text-slate-800 uppercase font-mono">{signal.network}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
-                      <span className="font-bold text-slate-400 font-sans">Мин. вывод</span>
-                      <span className="font-black text-slate-800 font-sans">5 {baseToken}</span>
-                    </div>
-                    <div className="flex justify-between items-center font-mono">
-                      <span className="font-bold text-slate-400 font-sans">Комиссия сети</span>
-                      <span className="font-bold text-slate-800">${networkFee.toFixed(4)}</span>
-                    </div>
-
-                    <div className="pt-2 flex justify-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onShowFullAnalysis) {
-                            onShowFullAnalysis(signal);
-                            onClose();
-                          } else {
-                            setShowFullAnalysis(true);
-                          }
-                        }}
-                        className="text-blue-500 hover:text-blue-600 font-black text-[10.5px] inline-flex items-center gap-1 transition-all cursor-pointer font-sans"
-                      >
-                        Полный анализ
-                        <ArrowUpRight size={13} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
               </motion.div>
             ) : (
               <motion.div
@@ -651,8 +699,8 @@ export function SignalDrawer(props: {
                 className="space-y-4 text-left"
               >
                 <div className="space-y-1">
-                  <h3 className="text-sm font-black text-slate-805">Критерии принятия торговых решений</h3>
-                  <p className="text-[11px] text-slate-450 font-bold leading-normal">
+                  <h4 className="text-xs font-extrabold text-slate-800">Критерии принятия торговых решений</h4>
+                  <p className="text-[10.5px] text-slate-500 font-medium leading-relaxed font-sans">
                     Полный автоматический аудит ликвидности мемпулов, цен стаканов и сборов ордеров.
                   </p>
                 </div>
@@ -664,8 +712,8 @@ export function SignalDrawer(props: {
                       ✓
                     </div>
                     <div>
-                      <h4 className="text-[11.5px] font-black text-slate-800">Проверка лимитов ликвидности CEX бирж</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
+                      <h5 className="text-[10.5px] font-extrabold text-slate-800">Проверка лимитов ликвидности CEX бирж</h5>
+                      <p className="text-[9.5px] text-slate-450 font-medium font-sans leading-relaxed mt-0.5">
                         Плотность биржевых стаканов на обеих CEX-платформах достаточна для совершения сделки без риска расширения спреда.
                       </p>
                     </div>
@@ -676,8 +724,8 @@ export function SignalDrawer(props: {
                       ✓
                     </div>
                     <div>
-                      <h4 className="text-[11.5px] font-black text-slate-800">Оптимальный уровень Slippage (Проскальзывание)</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
+                      <h5 className="text-[10.5px] font-extrabold text-slate-800">Оптимальный уровень Slippage (Проскальзывание)</h5>
+                      <p className="text-[9.5px] text-slate-450 font-medium font-sans leading-relaxed mt-0.5">
                         Ожидаемое проскальзывание составляет менее 0.1%. Изменения в стакане не превышают критический предел.
                       </p>
                     </div>
@@ -688,8 +736,8 @@ export function SignalDrawer(props: {
                       ✓
                     </div>
                     <div>
-                      <h4 className="text-[11.5px] font-black text-slate-800">Расчет Газа сети сессий</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
+                      <h5 className="text-[10.5px] font-extrabold text-slate-800">Расчет Газа сети сессий</h5>
+                      <p className="text-[9.5px] text-slate-450 font-medium font-sans leading-relaxed mt-0.5">
                         Комиссия сети блокчейна {signal.network} находится на минимальном допустимом уровне (${networkFee.toFixed(4)}), что гарантирует высокую экономическую рентабельность.
                       </p>
                     </div>
@@ -700,8 +748,8 @@ export function SignalDrawer(props: {
                       ✓
                     </div>
                     <div>
-                      <h4 className="text-[11.5px] font-black text-slate-800">Мульти-блокчейн маршрутизация</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
+                      <h5 className="text-[10.5px] font-extrabold text-slate-800">Мульти-блокчейн маршрутизация</h5>
+                      <p className="text-[9.5px] text-slate-450 font-medium font-sans leading-relaxed mt-0.5">
                         Время транзита токенов между {signal.buyDex} and {signal.sellDex} оценивается менее чем в 70 секунд, опережая потенциальный арбитражный распад спреда.
                       </p>
                     </div>
@@ -712,8 +760,8 @@ export function SignalDrawer(props: {
                       ✓
                     </div>
                     <div>
-                      <h4 className="text-[11.5px] font-black text-slate-800">Спецификация Flash Loan аудирована CertiK</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
+                      <h5 className="text-[10.5px] font-extrabold text-slate-800">Спецификация Flash Loan аудирована CertiK</h5>
+                      <p className="text-[9.5px] text-slate-450 font-medium font-sans leading-relaxed mt-0.5">
                         Смарт-арбитражный контракт v3 прошел полный внешний аудит безопасности. Риск невозврата заемных средств заблокирован на уровне смарт-логики.
                       </p>
                     </div>
@@ -735,18 +783,18 @@ export function SignalDrawer(props: {
             <>
               {/* TERMS CHECKBOX CONFIRMATION */}
               <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-left">
-                <label className="flex items-start gap-3 cursor-pointer">
+                <label className="flex items-start gap-2.5 cursor-pointer">
                   <input 
                     type="checkbox" 
                     disabled={isExecuting}
                     checked={confirmed}
                     onChange={(e) => setConfirmed(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-505 focus:ring-emerald-400 cursor-pointer"
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400 cursor-pointer"
                   />
-                  <p className="text-[10.5px] leading-relaxed font-bold text-slate-500 font-sans">
-                    Я ознакомлен с условиями арбитражной сделки, понимаю риски и даю согласие на автоматическое выполнение всех шагов.{" "}
-                    <span className="font-black text-slate-800 block mt-1.5 uppercase">Подтверждаю согласие</span>
-                  </p>
+                  <span className="text-[10px] leading-relaxed font-bold text-slate-500 font-sans select-none">
+                    Я ознакомлен с условиями арбитражной сделки, понимаю риски и даю согласие на автоматическое выполнение всех шагов.
+                    <span className="font-black text-slate-900 block mt-1 uppercase">Согласие подтверждено</span>
+                  </span>
                 </label>
               </div>
 
