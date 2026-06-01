@@ -16,6 +16,7 @@ import React from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { ScannerPage, SignalDrawer } from "./pages/ScannerPage";
+import { DetailedSignalAnalysis } from "./pages/DetailedAnalysisPage";
 import { AccountPage } from "./pages/AccountPage";
 import { SecurityPage } from "./pages/SecurityPage";
 import { ApiKeyPage } from "./pages/ApiKeyPage";
@@ -39,6 +40,7 @@ export default function App() {
   const [activeHeaderNav, setActiveHeaderNav] = useState("Сканер");
   const [isScannerRunning, setIsScannerRunning] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<any>(null);
+  const [detailedSignal, setDetailedSignal] = useState<any>(null);
 
   // Lifted Arbitrage Running State
   const [runningArbitrages, setRunningArbitrages] = useState<any[]>([]);
@@ -94,6 +96,7 @@ export default function App() {
 
     setTimeout(() => {
       setActiveTab(name);
+      setDetailedSignal(null);
       if (name === "Сканер") {
         setActiveHeaderNav("Сканер");
       } else if (["Профиль", "Безопасность", "API-ключи", "Подписка"].includes(name)) {
@@ -284,12 +287,22 @@ export default function App() {
 
             <AnimatePresence mode="wait">
               {activeTab === "Сканер" ? (
-                <ScannerPage 
-                  key="scanner" 
-                  onSelectSignal={setSelectedSignal} 
-                  isScannerRunning={isScannerRunning} 
-                  setIsScannerRunning={setIsScannerRunning} 
-                />
+                detailedSignal ? (
+                  <DetailedSignalAnalysis 
+                    key="detailed-analysis"
+                    signal={detailedSignal}
+                    onClose={() => setDetailedSignal(null)}
+                    runningArbitrages={runningArbitrages}
+                    setRunningArbitrages={setRunningArbitrages}
+                  />
+                ) : (
+                  <ScannerPage 
+                    key="scanner" 
+                    onSelectSignal={setSelectedSignal} 
+                    isScannerRunning={isScannerRunning} 
+                    setIsScannerRunning={setIsScannerRunning} 
+                  />
+                )
               ) : activeTab === "Безопасность" ? (
                 <SecurityPage key="security" />
               ) : activeTab === "API-ключи" ? (
@@ -339,6 +352,7 @@ export default function App() {
               onClose={() => setSelectedSignal(null)} 
               runningArbitrages={runningArbitrages}
               setRunningArbitrages={setRunningArbitrages}
+              onShowFullAnalysis={setDetailedSignal}
             />
           )}
         </AnimatePresence>

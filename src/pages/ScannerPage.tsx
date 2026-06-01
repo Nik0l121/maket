@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Play, 
   Square, 
@@ -25,44 +25,113 @@ import { motion, AnimatePresence } from "motion/react";
 import { Signal, containerVariants } from "../types";
 import { useToast } from "../components/Toast";
 
+import { DetailedSignalAnalysis } from "./DetailedAnalysisPage";
+
 // --- Signal Drawer Component ---
-export function SignalDrawer({ 
-  signal, 
-  onClose,
-  runningArbitrages = [],
-  setRunningArbitrages
-}: { 
+export function SignalDrawer(props: { 
   signal: Signal; 
   onClose: () => void;
   runningArbitrages?: any[];
   setRunningArbitrages?: (arbs: any) => void;
+  onShowFullAnalysis?: (signal: Signal) => void;
 }) {
+  const { signal, onClose, runningArbitrages = [], setRunningArbitrages, onShowFullAnalysis } = props;
   const { showToast } = useToast();
+  
+  const [showFullAnalysis, setShowFullAnalysis] = useState<boolean>(false);
   const [activeDrawerTab, setActiveDrawerTab] = useState<"launch" | "decision">("launch");
   
   // Input fields loaded with signal defaults
   const [buyPriceInput, setBuyPriceInput] = useState<string>(signal.buyPrice);
   const [sellPriceInput, setSellPriceInput] = useState<string>(signal.sellPrice);
-  const [sumInput, setSumInput] = useState<string>("12.00");
+  const [sumInput, setSumInput] = useState<string>("11.72");
   
   // State for balance
   const [balance, setBalance] = useState<number>(11.72);
-  
-  // Execution states derived from global runningArbitrages
-  const thisArb = runningArbitrages.find((arb: any) => arb.signal.id === signal.id);
-  const isThisSignalRunning = !!thisArb;
-  const isExecuting = isThisSignalRunning && thisArb.isExecuting;
-  const executionStep = isThisSignalRunning ? thisArb.executionStep : 0;
-  
-  const [confirmed, setConfirmed] = useState<boolean>(false);
+  const [confirmed, setConfirmed] = useState<boolean>(true);
+
+  // Keep track of previous prices to show green/red flashes on change
+  const prevBuyRef = useRef<string>(signal.buyPrice);
+  const prevSellRef = useRef<string>(signal.sellPrice);
+  const [buyFlash, setBuyFlash] = useState<"up" | "down" | null>(null);
+  const [sellFlash, setSellFlash] = useState<"up" | "down" | null>(null);
 
   // Sync state if signal changes
   useEffect(() => {
     setBuyPriceInput(signal.buyPrice);
     setSellPriceInput(signal.sellPrice);
-    setSumInput("12.00");
-    setConfirmed(false);
+    prevBuyRef.current = signal.buyPrice;
+    prevSellRef.current = signal.sellPrice;
+    setSumInput("11.72");
+    setConfirmed(true);
   }, [signal]);
+
+  // Handle buy price changes for flash effects
+  useEffect(() => {
+    const current = parseFloat(buyPriceInput);
+    const previous = parseFloat(prevBuyRef.current);
+    
+    if (!isNaN(current) && !isNaN(previous) && current !== previous) {
+      if (current > previous) {
+        setBuyFlash("up");
+      } else if (current < previous) {
+        setBuyFlash("down");
+      }
+      
+      const timer = setTimeout(() => {
+        setBuyFlash(null);
+      }, 1000);
+      
+      prevBuyRef.current = buyPriceInput;
+      return () => clearTimeout(timer);
+    } else if (buyPriceInput !== prevBuyRef.current) {
+      prevBuyRef.current = buyPriceInput;
+    }
+  }, [buyPriceInput]);
+
+  // Handle sell price changes for flash effects
+  useEffect(() => {
+    const current = parseFloat(sellPriceInput);
+    const previous = parseFloat(prevSellRef.current);
+    
+    if (!isNaN(current) && !isNaN(previous) && current !== previous) {
+      if (current > previous) {
+        setSellFlash("up");
+      } else if (current < previous) {
+        setSellFlash("down");
+      }
+      
+      const timer = setTimeout(() => {
+        setSellFlash(null);
+      }, 1000);
+      
+      prevSellRef.current = sellPriceInput;
+      return () => clearTimeout(timer);
+    } else if (sellPriceInput !== prevSellRef.current) {
+      prevSellRef.current = sellPriceInput;
+    }
+  }, [sellPriceInput]);
+
+  const adjustNumericInput = (type: "buy" | "sell", amount: number) => {
+    if (type === "buy") {
+      const current = parseFloat(buyPriceInput) || 0.0001;
+      setBuyPriceInput(Math.max(0, current + amount).toFixed(5));
+    } else {
+      const current = parseFloat(sellPriceInput) || 0.0001;
+      setSellPriceInput(Math.max(0, current + amount).toFixed(5));
+    }
+  };
+
+  if (showFullAnalysis) {
+    return (
+      <DetailedSignalAnalysis 
+        signal={signal} 
+        onClose={() => setShowFullAnalysis(false)} 
+        runningArbitrages={runningArbitrages}
+        setRunningArbitrages={setRunningArbitrages}
+      />
+    );
+  }
 
   const baseToken = signal.pair.split("/")[0] || "TOK";
   const quoteToken = signal.pair.split("/")[1] || "USDT";
@@ -82,11 +151,16 @@ export function SignalDrawer({
   const spreadPct = parsedBuy > 0 ? ((parsedSell - parsedBuy) / parsedBuy) * 100 : 0.44;
   const grossReturn = tokensBought * parsedSell;
   const netCapitalProfit = grossReturn - parsedSum;
-  const netProfit = parsedSum > 0 ? netCapitalProfit - totalTakerFees - networkFee : 0.53;
-  const roiPct = parsedSum > 0 ? (netProfit / parsedSum) * 100 : 0.37;
 
-  // Format functions
-  const isPositive = netProfit >= 0;
+  const hasInputAmount = parsedSum > 0;
+  const netProfit = hasInputAmount ? (netCapitalProfit - totalTakerFees - networkFee) : 0.53;
+  const roiPct = hasInputAmount ? (netProfit / parsedSum) * 100 : 0.37;
+
+  // Execution states derived from global runningArbitrages
+  const thisArb = runningArbitrages.find((arb: any) => arb.signal.id === signal.id);
+  const isThisSignalRunning = !!thisArb;
+  const isExecuting = isThisSignalRunning && thisArb.isExecuting;
+  const executionStep = isThisSignalRunning ? thisArb.executionStep : 0;
 
   const handlePercentClick = (pct: number) => {
     setSumInput((balance * pct).toFixed(2));
@@ -94,7 +168,7 @@ export function SignalDrawer({
 
   const handleExecuteArbitrage = () => {
     if (!confirmed) {
-      showToast("Пожалуйста, подтвердите согласие с рисками перед запуском", "error");
+      showToast("Пожалуйста, подтвердите согласие перед запуском", "error");
       return;
     }
 
@@ -112,53 +186,54 @@ export function SignalDrawer({
       executionStep: 1,
       isExecuting: true,
       sumInput,
-      netProfit,
+      netProfit: hasInputAmount ? netProfit : 0.53,
     };
     setRunningArbitrages?.((prev: any[]) => [...prev, initialArb]);
 
-    // Progress through 6 steps (total ~7.5 seconds)
+    // Progress through execution steps (total ~8 seconds)
     setTimeout(() => {
       setRunningArbitrages?.((prev: any[]) => prev.map((arb) => arb.id === processId ? { ...arb, executionStep: 2 } : arb));
-    }, 1250);
+    }, 1500);
 
     setTimeout(() => {
       setRunningArbitrages?.((prev: any[]) => prev.map((arb) => arb.id === processId ? { ...arb, executionStep: 3 } : arb));
-    }, 2500);
+    }, 3000);
 
     setTimeout(() => {
       setRunningArbitrages?.((prev: any[]) => prev.map((arb) => arb.id === processId ? { ...arb, executionStep: 4 } : arb));
-    }, 3750);
+    }, 4500);
 
     setTimeout(() => {
       setRunningArbitrages?.((prev: any[]) => prev.map((arb) => arb.id === processId ? { ...arb, executionStep: 5 } : arb));
-    }, 5000);
+    }, 6000);
 
     setTimeout(() => {
       setRunningArbitrages?.((prev: any[]) => prev.map((arb) => arb.id === processId ? { ...arb, executionStep: 6 } : arb));
-    }, 6250);
+    }, 7050);
 
     setTimeout(() => {
       setRunningArbitrages?.((prev: any[]) => prev.map((arb) => arb.id === processId ? { ...arb, executionStep: 7, isExecuting: false } : arb));
       
       // Update balance & show completion notification
-      if (netProfit > 0) {
-        setBalance(prev => prev + netProfit);
-        showToast(`Прибыль ${netProfit.toFixed(4)} USDT успешно зачислена на баланс.`, "success", "Сделка завершена");
+      const finalProfit = hasInputAmount ? netProfit : 0.53;
+      if (finalProfit > 0) {
+        setBalance(prev => prev + finalProfit);
+        showToast(`Прибыль ${finalProfit.toFixed(4)} USDT успешно зачислена на баланс.`, "success", "Сделка завершена");
       } else {
-        showToast(`Ордер закрыт. Итоговый результат: ${netProfit.toFixed(4)} USDT`, "info", "Ордер выполнен");
+        showToast(`Ордер закрыт. Итоговый результат: ${finalProfit.toFixed(4)} USDT`, "info", "Ордер выполнен");
       }
-    }, 7500);
+    }, 8000);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
+      {/* Backdrop overlay */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-slate-900/35 backdrop-blur-xs"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
       />
 
       {/* Drawer Panel */}
@@ -167,7 +242,7 @@ export function SignalDrawer({
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 240 }}
-        className="relative w-full max-w-[480px] h-full bg-white shadow-2xl flex flex-col z-10 border-l border-slate-100/85"
+        className="relative w-full max-w-[480px] h-full bg-white shadow-2xl flex flex-col z-10 border-l border-slate-100"
       >
         {/* Header Section */}
         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -184,14 +259,14 @@ export function SignalDrawer({
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase max-w-[280px] truncate leading-tight">
-                {signal.buyDex} → {signal.network} → {signal.sellDex} - #{signal.id}sh49aa
+                {signal.buyDex} → {signal.network} → {signal.sellDex} - #{signal.id || "f554ba7"}
               </p>
             </div>
           </div>
           <button 
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -202,7 +277,7 @@ export function SignalDrawer({
           <button
             type="button"
             onClick={() => setActiveDrawerTab("launch")}
-            className={`pb-2.5 transition-all text-left relative ${
+            className={`pb-2.5 transition-all text-left relative cursor-pointer ${
               activeDrawerTab === "launch" 
                 ? "text-blue-600 font-extrabold border-b-2 border-blue-600" 
                 : "text-slate-400 hover:text-slate-600"
@@ -214,7 +289,7 @@ export function SignalDrawer({
             type="button"
             disabled={isExecuting}
             onClick={() => setActiveDrawerTab("decision")}
-            className={`pb-2.5 transition-all text-left relative ${
+            className={`pb-2.5 transition-all text-left relative cursor-pointer ${
               activeDrawerTab === "decision" 
                 ? "text-blue-600 font-extrabold border-b-2 border-blue-600" 
                 : "text-slate-400 hover:text-slate-600"
@@ -238,37 +313,37 @@ export function SignalDrawer({
                 className="space-y-4"
               >
                 {/* Intro status alert card heading */}
-                <div className="space-y-1">
-                  <h3 className="text-sm font-black text-slate-850">Профит уверенный — можно запускать</h3>
+                <div className="space-y-1 text-left">
+                  <h3 className="text-sm font-black text-slate-800">Профит уверенный — можно запускать</h3>
                   <p className="text-[11px] text-slate-400 font-bold leading-normal">
                     Все проверки пройдены, спред живой, комиссия минимальная.
                   </p>
                 </div>
 
                 {/* 3 Columns Metrics (СПРЕД / ПРОФИТ / ROI) */}
-                <div className="grid grid-cols-3 gap-2 py-3 bg-slate-50/60 border border-slate-100 rounded-2xl px-3.5">
+                <div className="grid grid-cols-3 gap-2 py-3 bg-slate-50 border border-slate-100 rounded-2xl px-3.5">
                   <div className="space-y-0.5">
                     <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">Спред</span>
-                    <span className={`text-base font-black font-mono block text-left ${spreadPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    <span className={`text-sm sm:text-base font-black font-mono block text-left ${spreadPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                       {spreadPct >= 0 ? "+" : ""}{spreadPct.toFixed(2)}%
                     </span>
                   </div>
                   <div className="space-y-0.5 border-l border-slate-200/50 pl-3">
                     <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">Профит</span>
-                    <span className={`text-base font-black font-mono block text-left ${netProfit >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    <span className={`text-sm sm:text-base font-black font-mono block text-left ${netProfit >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                       {netProfit >= 0 ? "+" : ""}${netProfit.toFixed(2)}
                     </span>
                   </div>
                   <div className="space-y-0.5 border-l border-slate-200/50 pl-3">
                     <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase block text-left">ROI</span>
-                    <span className={`text-base font-black font-mono block text-left ${roiPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    <span className={`text-sm sm:text-base font-black font-mono block text-left ${roiPct >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                       {roiPct >= 0 ? "+" : ""}{roiPct.toFixed(2)}%
                     </span>
                   </div>
                 </div>
 
                 {/* Route Diagram Map Panel */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 text-left">
                   <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Маршрут</span>
                   <div className="grid grid-cols-11 gap-1 items-center bg-white border border-slate-200 rounded-2xl p-3.5">
                     
@@ -278,7 +353,7 @@ export function SignalDrawer({
                         {signal.buyDex}
                       </span>
                       <span className="font-mono font-bold text-[10px] text-slate-800 pt-1">
-                        {buyPriceInput}
+                        {parseFloat(buyPriceInput).toFixed(4)}
                       </span>
                       <span className="text-[8.5px] font-bold text-slate-400 block uppercase">Покупка</span>
                     </div>
@@ -290,7 +365,7 @@ export function SignalDrawer({
 
                     {/* Network details */}
                     <div className="col-span-3 flex flex-col justify-center items-center text-center space-y-0.5">
-                      <span className="text-[9.5px] font-black text-slate-800 font-sans tracking-wide">
+                      <span className="text-[9.5px] font-black text-slate-805 font-sans tracking-wide uppercase">
                         {signal.network}
                       </span>
                       <span className="text-[8.5px] font-mono font-bold text-slate-400">
@@ -310,7 +385,7 @@ export function SignalDrawer({
                         {signal.sellDex}
                       </span>
                       <span className="font-mono font-bold text-[10px] text-slate-800 pt-1">
-                        {sellPriceInput}
+                        {parseFloat(sellPriceInput).toFixed(4)}
                       </span>
                       <span className="text-[8.5px] font-bold text-slate-400 block uppercase">Продажа</span>
                     </div>
@@ -319,50 +394,98 @@ export function SignalDrawer({
                 </div>
 
                 {/* Important notice block below route */}
-                <div className="p-3.5 bg-amber-50/70 border border-amber-100 rounded-2xl flex items-start gap-2.5 text-[10.5px] text-amber-800 leading-relaxed font-sans">
+                <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2.5 text-[10.5px] text-amber-805 leading-relaxed font-sans text-left">
                   <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-amber-600" />
-                  <p className="font-semibold text-left">
+                  <p className="font-semibold font-sans">
                     <span className="font-black text-amber-900 block mb-0.5">Важно:</span>
                     перед выводом на <span className="font-black text-slate-800">{signal.sellDex}</span> нужно один раз подтвердить адрес кошелька депозита в настройках белого списка в личном кабинете.
                   </p>
                 </div>
 
                 {/* Price setup module (editable Buy & Sell rates) */}
-                <div className="space-y-1.5 pt-1">
+                <div className="space-y-1.5 pt-1 text-left">
                   <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Цены перед запуском</span>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 block">Цена покупки ({signal.buyDex})</label>
-                      <input 
-                        type="text" 
-                        disabled={isExecuting}
-                        value={buyPriceInput}
-                        onChange={(e) => setBuyPriceInput(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-800 font-mono focus:outline-none focus:bg-white focus:border-blue-500"
-                      />
+                      <div className="relative flex items-center">
+                        <button 
+                          type="button" 
+                          disabled={isExecuting}
+                          onClick={() => adjustNumericInput("buy", -0.0001)}
+                          className="absolute left-1 text-[8px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-1 rounded transition-all cursor-pointer select-none"
+                        >
+                          -0.0001
+                        </button>
+                        <input 
+                          type="text" 
+                          disabled={isExecuting}
+                          value={buyPriceInput}
+                          onChange={(e) => setBuyPriceInput(e.target.value)}
+                          className={`w-full pl-[46px] pr-[46px] py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
+                            buyFlash === "up"
+                              ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-500/10"
+                              : buyFlash === "down"
+                                ? "bg-rose-50 border-rose-400 text-rose-700 shadow-xs ring-2 ring-rose-500/10"
+                                : "bg-slate-50 border-slate-200 text-slate-800 focus:bg-white focus:border-blue-500"
+                          }`}
+                        />
+                        <button 
+                          type="button" 
+                          disabled={isExecuting}
+                          onClick={() => adjustNumericInput("buy", 0.0001)}
+                          className="absolute right-1 text-[8px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-1 rounded transition-all cursor-pointer select-none"
+                        >
+                          +0.0001
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 block">Цена продажи ({signal.sellDex})</label>
-                      <input 
-                        type="text" 
-                        disabled={isExecuting}
-                        value={sellPriceInput}
-                        onChange={(e) => setSellPriceInput(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-800 font-mono focus:outline-none focus:bg-white focus:border-blue-500"
-                      />
+                      <div className="relative flex items-center">
+                        <button 
+                          type="button" 
+                          disabled={isExecuting}
+                          onClick={() => adjustNumericInput("sell", -0.0001)}
+                          className="absolute left-1 text-[8px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-1 rounded transition-all cursor-pointer select-none"
+                        >
+                          -0.0001
+                        </button>
+                        <input 
+                          type="text" 
+                          disabled={isExecuting}
+                          value={sellPriceInput}
+                          onChange={(e) => setSellPriceInput(e.target.value)}
+                          className={`w-full pl-[46px] pr-[46px] py-2 rounded-xl text-center text-xs font-extrabold font-mono focus:outline-none select-all transition-all duration-300 ${
+                            sellFlash === "up"
+                              ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-500/10"
+                              : sellFlash === "down"
+                                ? "bg-rose-50 border-rose-400 text-rose-700 shadow-xs ring-2 ring-rose-500/10"
+                                : "bg-slate-50 border-slate-200 text-slate-800 focus:bg-white focus:border-blue-500"
+                          }`}
+                        />
+                        <button 
+                          type="button" 
+                          disabled={isExecuting}
+                          onClick={() => adjustNumericInput("sell", 0.0001)}
+                          className="absolute right-1 text-[8px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-1 rounded transition-all cursor-pointer select-none"
+                        >
+                          +0.0001
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* SUM INPUT BOX MODULE with balance and preset percentages */}
-                <div className="space-y-1.5 pt-1">
+                <div className="space-y-1.5 pt-1 text-left">
                   <div className="flex justify-between items-center px-1 text-[10.5px] font-bold">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Сумма ордера</span>
-                    <span className="text-slate-500">
-                      Баланс: <span className="font-black text-slate-805">{balance.toFixed(2)} USDT</span>
+                    <span className="text-slate-505">
+                      Баланс: <span className="font-black text-slate-800">{balance.toFixed(2)} USDT</span>
                     </span>
                   </div>
-                  <div className="bg-slate-50 border border-slate-200/70 p-3 rounded-2xl space-y-3">
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-3">
                     <div className="flex items-center justify-between gap-1">
                       <input 
                         type="text"
@@ -370,12 +493,12 @@ export function SignalDrawer({
                         value={sumInput}
                         onChange={(e) => setSumInput(e.target.value)}
                         className="bg-transparent border-0 p-0 text-xl font-black text-slate-800 focus:ring-0 focus:outline-none w-[60%] font-mono"
-                        placeholder="12.00"
+                        placeholder="11.72"
                       />
                       <div className="flex flex-col items-end flex-shrink-0">
-                        <span className="text-sm font-black text-slate-500 font-mono">{quoteToken}</span>
+                        <span className="text-sm font-black text-slate-550 font-mono">{quoteToken}</span>
                         {parsedSum > 0 && (
-                          <span className="text-[10.5px] font-black text-rose-500 font-mono mt-0.5">
+                          <span className="text-[10px] font-bold text-rose-550 font-mono mt-0.5">
                             → -{totalTakerFees.toFixed(3)} USDT
                           </span>
                         )}
@@ -390,7 +513,7 @@ export function SignalDrawer({
                           type="button"
                           disabled={isExecuting}
                           onClick={() => handlePercentClick(pct)}
-                          className="py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[10px] font-black text-slate-500 hover:text-slate-800 active:scale-95 transition-all text-center uppercase"
+                          className="py-1.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[10px] font-black text-slate-500 hover:text-slate-800 active:scale-95 transition-all text-center uppercase cursor-pointer"
                         >
                           {pct === 1.0 ? "MAX" : `${pct * 100}%`}
                         </button>
@@ -400,14 +523,14 @@ export function SignalDrawer({
                 </div>
 
                 {/* Simulated Steps Animation block "ЧТО ПРОИЗОЙДЕТ" */}
-                <div className="space-y-2 pt-2">
+                <div className="space-y-2 pt-2 text-left">
                   <div className="flex justify-between items-center px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     <span>Что произойдет</span>
-                    <span className="font-mono text-[9px] lowercase">~70c</span>
+                    <span className="font-mono text-[9px] lowercase">~78с</span>
                   </div>
 
                   {/* Vertically chained sequence */}
-                  <div className="border border-slate-200 rounded-2xl p-4 bg-white/50 space-y-3.5 relative overflow-hidden text-left">
+                  <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3.5 relative overflow-hidden text-left">
                     
                     {/* Top Balance Banner */}
                     <div className="flex items-center gap-2 pb-2.5 border-b border-slate-200/50 text-emerald-600 font-sans text-[11px] font-extrabold">
@@ -429,14 +552,13 @@ export function SignalDrawer({
                       return steps.map((st) => {
                         const isCompleted = executionStep > st.id || (!isExecuting && executionStep === 7);
                         const isActive = isExecuting && executionStep === st.id;
-                        const isPending = !isCompleted && !isActive;
 
                         return (
                           <div key={st.id} className="flex items-center gap-3 relative z-10">
                             {/* Icon Indicator */}
                             {isCompleted ? (
-                              <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-4xs">
-                                <Check size={11} className="stroke-[3]" />
+                              <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-4xs font-black text-xs">
+                                ✓
                               </div>
                             ) : isActive ? (
                               <div className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -466,32 +588,32 @@ export function SignalDrawer({
                 </div>
 
                 {/* Standard Fee Details panel row */}
-                <div className="flex justify-between items-center text-[10.5px] font-bold text-slate-450 px-1 pt-1 font-sans">
+                <div className="flex justify-between items-center text-[10.5px] font-bold text-slate-400 px-1 pt-1 font-sans text-left">
                   <span>Комиссии бирж (taker x 2)</span>
-                  <span className="font-mono font-black text-slate-705">
+                  <span className="font-mono font-black text-slate-700">
                     0.0120 USDT ≈ 0.20%
                   </span>
                 </div>
 
                 {/* Detailed Spec Params table (ПАРАМЕТРЫ) */}
-                <div className="space-y-1.5 pt-2">
+                <div className="space-y-1.5 pt-2 text-left">
                   <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Параметры</span>
-                  <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-xs text-left">
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-xs text-left">
                     <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
                       <span className="font-bold text-slate-400">Ликвидность</span>
-                      <span className="font-black text-emerald-500 uppercase">Высокая</span>
+                      <span className="font-black text-emerald-500 uppercase font-sans">Высокая</span>
                     </div>
                     <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
                       <span className="font-bold text-slate-400 font-sans">Signal ID</span>
-                      <span className="font-black text-slate-800">#{signal.id}sh49aa</span>
+                      <span className="font-black text-slate-800">#{signal.id || "f554ba7"}</span>
                     </div>
                     <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
-                      <span className="font-bold text-slate-400">Сеть</span>
+                      <span className="font-bold text-slate-400 font-sans">Сеть</span>
                       <span className="font-black text-slate-800 uppercase font-mono">{signal.network}</span>
                     </div>
                     <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
                       <span className="font-bold text-slate-400 font-sans">Мин. вывод</span>
-                      <span className="font-black text-slate-800">5 {baseToken}</span>
+                      <span className="font-black text-slate-800 font-sans">5 {baseToken}</span>
                     </div>
                     <div className="flex justify-between items-center font-mono">
                       <span className="font-bold text-slate-400 font-sans">Комиссия сети</span>
@@ -501,8 +623,15 @@ export function SignalDrawer({
                     <div className="pt-2 flex justify-center">
                       <button
                         type="button"
-                        onClick={() => showToast("Полный хеш-анализ пула доступен только премиум подписчикам", "info")}
-                        className="text-blue-500 hover:text-blue-600 font-black text-[10.5px] inline-flex items-center gap-1 transition-all"
+                        onClick={() => {
+                          if (onShowFullAnalysis) {
+                            onShowFullAnalysis(signal);
+                            onClose();
+                          } else {
+                            setShowFullAnalysis(true);
+                          }
+                        }}
+                        className="text-blue-500 hover:text-blue-600 font-black text-[10.5px] inline-flex items-center gap-1 transition-all cursor-pointer font-sans"
                       >
                         Полный анализ
                         <ArrowUpRight size={13} />
@@ -510,8 +639,6 @@ export function SignalDrawer({
                     </div>
                   </div>
                 </div>
-
-
 
               </motion.div>
             ) : (
@@ -524,76 +651,76 @@ export function SignalDrawer({
                 className="space-y-4 text-left"
               >
                 <div className="space-y-1">
-                  <h3 className="text-sm font-black text-slate-850">Критерии принятия торговых решений</h3>
+                  <h3 className="text-sm font-black text-slate-805">Критерии принятия торговых решений</h3>
                   <p className="text-[11px] text-slate-450 font-bold leading-normal">
                     Полный автоматический аудит ликвидности мемпулов, цен стаканов и сборов ордеров.
                   </p>
                 </div>
 
                 {/* Detailed checks list */}
-                <div className="space-y-4 bg-slate-50 border border-slate-100/50 rounded-2xl p-4.5">
+                <div className="space-y-4 bg-slate-50 border border-slate-100 rounded-2xl p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-emerald-55 font-sans text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5 font-bold">
                       ✓
                     </div>
                     <div>
-                      <h4 className="text-[11.5px] font-black text-slate-800">Проверка лимитов ликвидности DEX/CEX</h4>
-                      <p className="text-[10px] text-slate-450 font-semibold leading-normal mt-0.5">
-                        Ликвидность децентрализованного и централизованного пулов достаточна для совершения сделки без проскальзывания цены.
+                      <h4 className="text-[11.5px] font-black text-slate-800">Проверка лимитов ликвидности CEX бирж</h4>
+                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
+                        Плотность биржевых стаканов на обеих CEX-платформах достаточна для совершения сделки без риска расширения спреда.
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3 pt-3.5 border-t border-slate-200/50">
-                    <div className="w-5 h-5 rounded-full bg-emerald-55 font-sans text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5 font-bold">
                       ✓
                     </div>
                     <div>
                       <h4 className="text-[11.5px] font-black text-slate-800">Оптимальный уровень Slippage (Проскальзывание)</h4>
-                      <p className="text-[10px] text-slate-450 font-semibold leading-normal mt-0.5">
+                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
                         Ожидаемое проскальзывание составляет менее 0.1%. Изменения в стакане не превышают критический предел.
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3 pt-3.5 border-t border-slate-200/50">
-                    <div className="w-5 h-5 rounded-full bg-emerald-55 font-sans text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5 font-bold">
                       ✓
                     </div>
                     <div>
                       <h4 className="text-[11.5px] font-black text-slate-800">Расчет Газа сети сессий</h4>
-                      <p className="text-[10px] text-slate-450 font-semibold leading-normal mt-0.5">
+                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
                         Комиссия сети блокчейна {signal.network} находится на минимальном допустимом уровне (${networkFee.toFixed(4)}), что гарантирует высокую экономическую рентабельность.
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3 pt-3.5 border-t border-slate-200/50">
-                    <div className="w-5 h-5 rounded-full bg-emerald-55 font-sans text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5 font-bold">
                       ✓
                     </div>
                     <div>
                       <h4 className="text-[11.5px] font-black text-slate-800">Мульти-блокчейн маршрутизация</h4>
-                      <p className="text-[10px] text-slate-450 font-semibold leading-normal mt-0.5">
-                        Время транзита токенов между {signal.buyDex} и {signal.sellDex} оценивается менее чем в 70 секунд, опережая потенциальный арбитражный распад спреда.
+                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
+                        Время транзита токенов между {signal.buyDex} and {signal.sellDex} оценивается менее чем в 70 секунд, опережая потенциальный арбитражный распад спреда.
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3 pt-3.5 border-t border-slate-200/50">
-                    <div className="w-5 h-5 rounded-full bg-emerald-55 font-sans text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-xs mt-0.5 font-bold">
                       ✓
                     </div>
                     <div>
                       <h4 className="text-[11.5px] font-black text-slate-800">Спецификация Flash Loan аудирована CertiK</h4>
-                      <p className="text-[10px] text-slate-450 font-semibold leading-normal mt-0.5">
+                      <p className="text-[10px] text-slate-400 font-semibold leading-normal mt-0.5">
                         Смарт-арбитражный контракт v3 прошел полный внешний аудит безопасности. Риск невозврата заемных средств заблокирован на уровне смарт-логики.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl text-[10.5px] text-blue-800 leading-normal font-sans font-semibold">
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl text-[10.5px] text-blue-805 leading-normal font-sans font-semibold">
                   Все тесты успешно пройдены алгоритмом за 0.04 сек. Смело инициируйте транзакции в автоматическом режиме исполнения.
                 </div>
               </motion.div>
@@ -603,54 +730,72 @@ export function SignalDrawer({
         </div>
 
         {/* Sticky bottom control footer container */}
-        <div className="p-4.5 bg-white border-t border-slate-100 shadow-2xl relative z-20 space-y-3.5 select-none">
+        <div className="p-4.5 bg-white border-t border-slate-100 shadow-xl relative z-20 space-y-3.5 select-none text-left">
           {activeDrawerTab === "launch" ? (
             <>
               {/* TERMS CHECKBOX CONFIRMATION */}
-              <div className="bg-slate-50 border border-slate-200/60 p-3.5 rounded-2xl text-left">
+              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-left">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input 
                     type="checkbox" 
                     disabled={isExecuting}
                     checked={confirmed}
                     onChange={(e) => setConfirmed(e.target.checked)}
-                    className="mt-1 h-4.5 w-4.5 rounded border-slate-300 text-emerald-500 focus:ring-emerald-400 cursor-pointer"
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-505 focus:ring-emerald-400 cursor-pointer"
                   />
                   <p className="text-[10.5px] leading-relaxed font-bold text-slate-500 font-sans">
                     Я ознакомлен с условиями арбитражной сделки, понимаю риски и даю согласие на автоматическое выполнение всех шагов.{" "}
-                    <span className="font-black text-slate-800 block mt-1.5 uppercase">Подтверждаю</span>
+                    <span className="font-black text-slate-800 block mt-1.5 uppercase">Подтверждаю согласие</span>
                   </p>
                 </label>
               </div>
 
-              {/* Execute Button */}
-              <button
-                type="button"
-                disabled={isExecuting || !confirmed}
-                onClick={handleExecuteArbitrage}
-                className={`w-full py-4 rounded-xl font-black text-xs tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2.5 active:scale-[0.98] ${
-                  isExecuting 
-                    ? "bg-rose-500 text-white shadow-md shadow-rose-200 hover:bg-rose-600 cursor-pointer" 
-                    : confirmed
-                      ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-200 cursor-pointer"
-                      : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/60"
-                }`}
-              >
-                {isExecuting ? (
-                  <>
-                    <RefreshCw size={13} className="animate-spin" />
-                    Исполнение связки...
-                  </>
-                ) : (
-                  <>
-                    <Play size={9} className="fill-white font-black" />
-                    Запустить арбитраж
-                  </>
-                )}
-              </button>
+              {/* Execution outcomes status block within drawer */}
+              {isThisSignalRunning && !isExecuting && executionStep === 7 ? (
+                <div className="space-y-3 text-left">
+                  <div className="p-3 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl space-y-1 text-center font-sans">
+                    <span className="text-xs font-black block">Ордер выполнен</span>
+                    <p className="text-[11.5px] font-extrabold font-mono">
+                      Профит: <span className="text-emerald-500">+{netProfit.toFixed(4)} USDT</span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-black text-xs tracking-wider uppercase shadow-md shadow-orange-200 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    Закрыть и продолжить
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isExecuting || !confirmed}
+                  onClick={handleExecuteArbitrage}
+                  className={`w-full py-4 rounded-xl font-black text-xs tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2.5 active:scale-[0.98] ${
+                    isExecuting 
+                      ? "bg-rose-500 text-white shadow-md shadow-rose-200 hover:bg-rose-600 cursor-pointer animate-pulse" 
+                      : confirmed
+                        ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-250 cursor-pointer"
+                        : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+                  }`}
+                >
+                  {isExecuting ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      Исполнение связки...
+                    </>
+                  ) : (
+                    <>
+                      <Play size={9} className="fill-white font-black" />
+                      Запустить арбитраж
+                    </>
+                  )}
+                </button>
+              )}
             </>
           ) : (
-            <div className="py-2.5 flex items-center justify-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase tracking-wider select-none bg-slate-50 border border-slate-200/50 rounded-xl">
+            <div className="py-2.5 flex items-center justify-center gap-1.5 text-[9px] text-slate-400 font-bold uppercase tracking-wider select-none bg-slate-50 border border-slate-200 rounded-xl">
               <Lock size={12} className="text-slate-400" />
               Спецификация контракта полностью аудирована CertiK
             </div>
@@ -874,12 +1019,12 @@ export function ScannerPage({
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="space-y-6"
+      className="p-5 sm:p-6 lg:p-8 max-w-[1400px] mx-auto w-full space-y-6"
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEFT COLUMN: Controls & Settings */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 xl:col-span-3 space-y-6">
           
           {/* Scanner Control and Stats Center */}
           <div className="bg-white border border-slate-200/50 rounded-3xl p-6 shadow-3xs space-y-5 relative overflow-hidden">
@@ -1001,7 +1146,7 @@ export function ScannerPage({
                   onChange={(e) => setSelectedDex(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
                 >
-                  <option value="Все">Все подключенные DEX/CEX</option>
+                  <option value="Все">Все подключенные биржи CEX</option>
                   <option value="HTX">HTX Global</option>
                   <option value="BITGET">Bitget Exchange</option>
                   <option value="MEXC">MEXC Global</option>
@@ -1044,7 +1189,7 @@ export function ScannerPage({
         </div>
 
         {/* RIGHT PREMIUM SPACE AREA FOR INTERMEDIATE STATS AND SPREADSHEETS */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
 
           {/* Filtering Header Tab bar */}
           <div className="bg-white border border-slate-200/50 rounded-3xl p-4 shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1091,8 +1236,8 @@ export function ScannerPage({
             <div className="hidden md:grid grid-cols-12 gap-2 px-6 py-4.5 bg-slate-50/60 border-b border-slate-200/50 text-[10px] font-black uppercase text-slate-450 tracking-wider">
               <span className="col-span-3">ПАРА / СЕТЬ</span>
               <span className="col-span-3">СПРЕД И ROI</span>
-              <span className="col-span-2 text-center">ПОКУПКА CEX/DEX</span>
-              <span className="col-span-2 text-center">ПРОДАЖА CEX/DEX</span>
+              <span className="col-span-2 text-center">ПОКУПКА (CEX)</span>
+              <span className="col-span-2 text-center">ПРОДАЖА (CEX)</span>
               <span className="col-span-2 text-right">АНАЛИТИКА</span>
             </div>
 
