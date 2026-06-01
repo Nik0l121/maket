@@ -1,5 +1,5 @@
 import React from "react";
-import { LogOut, ChevronRight, Activity, ShieldCheck, Key, CreditCard, Radio, Settings } from "lucide-react";
+import { LogOut, ChevronRight, ChevronLeft, Activity, ShieldCheck, Key, CreditCard, Radio, Settings, X, Check } from "lucide-react";
 import { motion } from "motion/react";
 import { NavItem, NotificationItem } from "../types";
 
@@ -34,6 +34,11 @@ interface SidebarProps {
   setSelectedExchangeFilter?: (filter: string) => void;
   balanceSubView?: string;
   setBalanceSubView?: (view: string) => void;
+
+  // Arbitrage states
+  runningArbitrages?: any[];
+  setRunningArbitrages?: (arbs: any[]) => void;
+  onSelectRunningArbitrage?: (arb: any) => void;
 }
 
 export function Sidebar({
@@ -53,8 +58,13 @@ export function Sidebar({
   selectedExchangeFilter,
   setSelectedExchangeFilter,
   balanceSubView,
-  setBalanceSubView
+  setBalanceSubView,
+  runningArbitrages,
+  setRunningArbitrages,
+  onSelectRunningArbitrage
 }: SidebarProps) {
+  const [activeArbIndex, setActiveArbIndex] = React.useState(0);
+
   return (
     <motion.aside 
       id="sidebar"
@@ -69,48 +79,11 @@ export function Sidebar({
         ${isSidebarOpen ? "w-[240px]" : "w-0"}
       `}
     >
-      {/* Search/Scanner Status */}
-      {isScannerTab && (
-        <div className="p-5 border-b border-slate-50 space-y-4">
-          <div className="flex flex-col items-center">
-            <div className="relative w-24 h-24 flex items-center justify-center">
-              <div className={`absolute inset-0 bg-blue-50/50 rounded-full animate-ping opacity-20 ${isScannerRunning ? "block" : "hidden"}`} />
-              <div className={`absolute inset-1.5 border border-dashed border-blue-200 rounded-full animate-[spin_10s_linear_infinite] ${isScannerRunning ? "block" : "hidden"}`} />
-              <div className="absolute inset-4 border border-blue-100 rounded-full" />
-              <div className="relative flex flex-col items-center gap-0.5">
-                <span className={`text-[8px] font-black uppercase tracking-widest ${isScannerRunning ? "text-emerald-500" : "text-slate-400"}`}>
-                  {isScannerRunning ? "Active" : "Standby"}
-                </span>
-                <Activity size={18} className={isScannerRunning ? "text-emerald-500 animate-pulse" : "text-slate-300"} />
-              </div>
-            </div>
-            <button 
-              onClick={() => setIsScannerRunning?.(!isScannerRunning)}
-              className={`mt-3 w-full py-3 rounded-xl font-black text-xs tracking-tight transition-all active:scale-95 shadow-lg ${
-                isScannerRunning 
-                   ? "bg-rose-500 text-white shadow-rose-100 hover:bg-rose-600" 
-                   : "bg-emerald-500 text-white shadow-emerald-100 hover:bg-emerald-600"
-              }`}
-            >
-              {isScannerRunning ? "ОСТАНОВИТЬ" : "ЗАПУСТИТЬ"}
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* Navigation */}
       <div className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
-        {isScannerTab && (
-          <div className="space-y-3 px-3 pb-2">
-             <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest leading-none">Сессия</p>
-             <div className="grid grid-cols-1 gap-1.5">
-               <SessionStat label="Найдено" value="12" />
-               <SessionStat label="Очередь" value="1" color="text-blue-600" />
-               <SessionStat label="Мин. спред" value="-1.22%" />
-               <SessionStat label="Макс. спред" value="+0.44%" color="text-emerald-500" />
-             </div>
-          </div>
-        )}
+
 
         {activeTab === "Баланс" ? (
           <>
@@ -138,7 +111,7 @@ export function Sidebar({
             </div>
 
             {/* СЕГМЕНТИРОВАННЫЙ КОНТРОЛЬ */}
-            <div className="px-3 pt-4 border-t border-slate-105">
+            <div className="px-3 pt-4 border-t border-slate-200/50">
               <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-2.5 leading-none">Режим просмотра</p>
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50">
                 <button
@@ -146,7 +119,7 @@ export function Sidebar({
                   className={`flex-1 py-1.5 text-[10.5px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
                     balanceSubView === "Отчет по активам"
                       ? "bg-white text-slate-800 shadow-3xs"
-                      : "text-slate-450 hover:text-slate-600"
+                      : "text-slate-400 hover:text-slate-600"
                   }`}
                 >
                   Отчет
@@ -156,7 +129,7 @@ export function Sidebar({
                   className={`flex-1 py-1.5 text-[10.5px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
                     balanceSubView === "Сводка"
                       ? "bg-white text-slate-800 shadow-3xs"
-                      : "text-slate-450 hover:text-slate-600"
+                      : "text-slate-400 hover:text-slate-600"
                   }`}
                 >
                   Сводка
@@ -165,7 +138,7 @@ export function Sidebar({
             </div>
 
             {/* СПИСОК БИРЖ */}
-            <div className="space-y-1.5 px-3 pt-4 border-t border-slate-105">
+            <div className="space-y-1.5 px-3 pt-4 border-t border-slate-200/50">
               <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-2 px-1 leading-none">БИРЖИ</p>
               <div className="space-y-1 max-h-[190px] overflow-y-auto pr-1">
                 {[
@@ -297,7 +270,7 @@ export function Sidebar({
               </div>
             </div>
           </>
-        ) : (
+        ) : activeTab === "Сканер" ? null : (
           <>
             <div className="space-y-0.5 pt-2">
               <p className="px-3 text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-3 leading-none">Разделы</p>
@@ -309,7 +282,7 @@ export function Sidebar({
                     setActiveTab(item.name);
                     if (window.innerWidth < 1024) setIsSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 group ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 group cursor-pointer ${
                     activeTab === item.name 
                        ? "bg-blue-600 text-white shadow-md shadow-blue-100" 
                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
@@ -329,60 +302,148 @@ export function Sidebar({
                 </button>
               ))}
             </div>
-
-            {/* Account metrics block inside public sidebar */}
-            <div className="space-y-3 px-3 pt-4 border-t border-slate-100/60">
-              <p className="text-[9px] font-black text-slate-400/80 uppercase tracking-widest leading-none">Аккаунт</p>
-              <div className="grid grid-cols-1 gap-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/60 transition-all hover:bg-slate-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-500">Защита</span>
-                  </div>
-                  <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md tabular-nums">94/100</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Key size={14} className="text-blue-500 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-500">API-ключи</span>
-                  </div>
-                  <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md tabular-nums">4 активных</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CreditCard size={14} className="text-emerald-500 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-500">Подписка</span>
-                  </div>
-                  <span className="text-[11px] font-black text-slate-800 tabular-nums">PRO до 24.06</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Radio size={14} className="text-blue-500 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-500">Сессии</span>
-                  </div>
-                  <span className="text-[11px] font-black text-slate-800 tabular-nums">3 онлайн</span>
-                </div>
-              </div>
-            </div>
           </>
         )}
       </div>
 
       {/* Active Processes Footer */}
-      <div className="p-4 border-t border-slate-50 bg-slate-50/20">
-        <div className="p-3 bg-white rounded-2xl border border-slate-100 space-y-1.5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Процессы</span>
-            <div className="flex gap-0.5">
-              <div className="w-0.5 h-2 rounded-full bg-slate-200" />
-              <div className="w-0.5 h-2 rounded-full bg-slate-300 animate-pulse" />
-              <div className="w-0.5 h-2 rounded-full bg-slate-200" />
+      <div className="p-4 border-t border-slate-100 bg-slate-50/20">
+        {runningArbitrages && runningArbitrages.length > 0 ? (() => {
+          const currentIndex = Math.min(activeArbIndex, runningArbitrages.length - 1);
+          const normalizedIndex = Math.max(0, currentIndex);
+          const arb = runningArbitrages[normalizedIndex];
+
+          return (
+            <div 
+              onClick={() => onSelectRunningArbitrage?.(arb)}
+              className="p-3 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-200 rounded-2xl space-y-2 text-left relative overflow-hidden group select-none transition-all duration-200 cursor-pointer shadow-xs"
+            >
+              {/* Top Indicator & Navigation */}
+              <div className="flex items-center justify-between gap-1">
+                <span className={`text-[8px] font-black uppercase tracking-widest leading-none ${arb.isExecuting ? "text-indigo-600" : "text-emerald-600"}`}>
+                  {arb.isExecuting ? "АРБИТРАЖ В ПРОЦЕССЕ" : "СДЕЛКА ИСПОЛНЕНА"}
+                </span>
+                
+                <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {/* Pager if multiple */}
+                  {runningArbitrages.length > 1 && (
+                    <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/60 rounded-lg px-2 py-0.5 text-[9px] font-bold text-slate-500">
+                      <button
+                        onClick={() => {
+                          setActiveArbIndex((prev) => (prev - 1 + runningArbitrages.length) % runningArbitrages.length);
+                        }}
+                        className="p-0.5 text-slate-400 hover:text-slate-800 transition-colors rounded hover:bg-slate-100 cursor-pointer flex items-center justify-center"
+                        title="Назад"
+                      >
+                        <ChevronLeft size={10} className="stroke-[3.5]" />
+                      </button>
+                      <span className="text-[8.5px] font-extrabold whitespace-nowrap min-w-[24px] text-center select-none leading-none pt-[1px]">
+                        {normalizedIndex + 1}/{runningArbitrages.length}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setActiveArbIndex((prev) => (prev + 1) % runningArbitrages.length);
+                        }}
+                        className="p-0.5 text-slate-400 hover:text-slate-800 transition-colors rounded hover:bg-slate-100 cursor-pointer flex items-center justify-center"
+                        title="Вперед"
+                      >
+                        <ChevronRight size={10} className="stroke-[3.5]" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Clear button if completed */}
+                  {!arb.isExecuting ? (
+                    <button
+                      onClick={() => {
+                        const nextList = runningArbitrages.filter((a) => a.id !== arb.id);
+                        setRunningArbitrages?.(nextList);
+                        if (normalizedIndex >= nextList.length) {
+                          setActiveArbIndex(Math.max(0, nextList.length - 1));
+                        }
+                      }}
+                      className="p-1 text-slate-400 hover:text-slate-600 rounded bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="Закрыть"
+                    >
+                      <X size={10} className="stroke-[3.5]" />
+                    </button>
+                  ) : (
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Signal Details */}
+              <div className="space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11.5px] font-black text-slate-800 group-hover:text-blue-600 transition-colors">
+                    {arb.signal.pair}
+                  </span>
+                  <span className={`text-[9.5px] font-bold font-mono ${parseFloat(arb.signal.spread) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                    {arb.signal.spread}
+                  </span>
+                </div>
+                <p className="text-[9px] text-slate-400 font-bold uppercase truncate leading-none">
+                  {arb.signal.buyDex} → {arb.signal.sellDex}
+                </p>
+              </div>
+
+              {/* Current step desc */}
+              <div className="pt-0.5">
+                <p className="text-[10px] font-semibold text-slate-600 truncate leading-tight">
+                  {(() => {
+                    const step = arb.executionStep;
+                    if (step === 0) return "Ожидание запуска...";
+                    if (step === 1) return "1/6: Выставление ордера на покупку";
+                    if (step === 2) return "2/6: Исполнение ордера на покупку";
+                    if (step === 3) return "3/6: Перевод токена по сети";
+                    if (step === 4) return "4/6: Зачисление токенов";
+                    if (step === 5) return "5/6: Выставление ордера на продажу";
+                    if (step === 6) return "6/6: Исполнение ордера на продажу";
+                    return "Сделка успешно завершена!";
+                  })()}
+                </p>
+              </div>
+
+              {/* Step mini representation with 6 segments */}
+              <div className="flex gap-1 pt-1.5">
+                {[1, 2, 3, 4, 5, 6].map((st) => {
+                  const isCompleted = arb.executionStep > st || (!arb.isExecuting && arb.executionStep === 7);
+                  const isActive = arb.isExecuting && arb.executionStep === st;
+                  return (
+                    <div 
+                      key={st}
+                      className={`h-1 rounded-full flex-1 transition-all duration-300 ${
+                        isCompleted 
+                          ? "bg-emerald-500" 
+                          : isActive 
+                            ? "bg-indigo-500 animate-pulse" 
+                            : "bg-slate-100"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
             </div>
+          );
+        })() : (
+          <div className="p-3 bg-white rounded-2xl border border-slate-200/60 space-y-1.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Процессы</span>
+              <div className="flex gap-0.5">
+                <div className="w-0.5 h-2 rounded-full bg-slate-200" />
+                <div className="w-0.5 h-2 rounded-full bg-slate-300 animate-pulse" />
+                <div className="w-0.5 h-2 rounded-full bg-slate-200" />
+              </div>
+            </div>
+            <p className="text-[10px] font-bold text-slate-500 leading-tight truncate">Нет активных лимитов</p>
           </div>
-          <p className="text-[10px] font-bold text-slate-500 leading-tight truncate">Нет активных лимитов</p>
-        </div>
+        )}
         
-        <button id="logout-button" className="w-full mt-3 py-2 flex items-center justify-center gap-2 text-slate-400 hover:text-rose-500 transition-colors font-bold text-[10px] group">
+        <button id="logout-button" className="w-full mt-3 py-2 flex items-center justify-center gap-2 text-slate-400 hover:text-rose-500 transition-colors font-bold text-[10px] group cursor-pointer">
           <LogOut size={14} className="group-hover:-translate-x-1 transition-transform" />
           Выйти из системы
         </button>

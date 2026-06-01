@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Bell, Sun, Menu, X, Activity } from "lucide-react";
+import { Search, Bell, Sun, Menu, X, Activity, LogOut } from "lucide-react";
 import { HeaderNav } from "../types";
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   email: string;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
+  onLogout?: () => void;
 }
 
 export function Header({
@@ -19,7 +20,8 @@ export function Header({
   username,
   email,
   isSidebarOpen,
-  setIsSidebarOpen
+  setIsSidebarOpen,
+  onLogout
 }: HeaderProps) {
   return (
     <header id="main-header" className="h-14 flex-shrink-0 bg-white/80 backdrop-blur-md border-b border-slate-200/60 z-40 px-5 sm:px-6">
@@ -80,13 +82,25 @@ export function Header({
             </div>
           </div>
 
-          <button 
-            id="mobile-menu-toggle" 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="lg:hidden p-1.5 text-slate-500 hover:text-slate-800 transition-all rounded-lg bg-slate-50 border border-slate-100"
-          >
-            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {onLogout && (
+            <button 
+              onClick={onLogout}
+              title="Выйти" 
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all border border-transparent hover:border-rose-100"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
+
+          {activeHeaderNav !== "FAQ" && (
+            <button 
+              id="mobile-menu-toggle" 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+              className="lg:hidden p-1.5 text-slate-500 hover:text-slate-800 transition-all rounded-lg bg-slate-50 border border-slate-100"
+            >
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          )}
         </div>
       </div>
     </header>

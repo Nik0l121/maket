@@ -7,6 +7,7 @@ import {
   SlidersHorizontal, 
   ChevronDown, 
   ChevronUp, 
+  ChevronLeft,
   Trash, 
   Sliders, 
   Settings, 
@@ -147,6 +148,7 @@ export function NotificationsPage({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "split">("list");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [mobileActiveView, setMobileActiveView] = useState<'list' | 'detail'>('list');
 
   // Keep track of the last known list of filtered IDs to trace the correct "next" element
   const prevFilteredIdsRef = useRef<string[]>([]);
@@ -639,135 +641,258 @@ export function NotificationsPage({
                                 {/* Row Summary header block */}
                                 <div 
                                   onClick={() => handleToggleExpand(n.id)}
-                                  className={`cursor-pointer hover:bg-slate-50/50 p-4 md:px-6 md:py-4.5 grid grid-cols-1 md:grid-cols-12 gap-3 items-center select-none ${
-                                    isExpanded ? "border-b border-dashed border-slate-100" : ""
+                                  className={`cursor-pointer hover:bg-slate-50/50 p-4 shrink-0 select-none ${
+                                    isExpanded ? "border-b border-dashed border-slate-100 placeholder-inset" : ""
                                   }`}
                                 >
-                                  {/* Left Time/Checkbox column */}
-                                  <div className="col-span-1 flex items-center gap-3">
-                                    <input 
-                                      type="checkbox" 
-                                      checked={isSelected}
-                                      onChange={(e) => handleSelectRow(n.id, e as any)}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="w-3.5 h-3.5 text-blue-600 rounded-sm border-slate-300 focus:ring-blue-500 cursor-pointer shrink-0 accent-blue-600"
-                                    />
-                                    <div className="flex flex-col">
-                                      <span className="font-mono text-[11px] font-black text-slate-800 tracking-tight">{n.time}</span>
-                                      <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider leading-none mt-0.5">
-                                        {n.status}
+                                  {/* --- MOBILE VIEW: < md --- */}
+                                  <div className="md:hidden flex flex-col space-y-3">
+                                    {/* Top row: Time, Priority, Status Indicator & Checkbox */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <input 
+                                          type="checkbox" 
+                                          checked={isSelected}
+                                          onChange={(e) => handleSelectRow(n.id, e as any)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="w-4 h-4 text-blue-600 rounded-sm border-slate-300 focus:ring-blue-500 cursor-pointer accent-blue-600 shrink-0"
+                                        />
+                                        <span className="font-mono text-xs font-black text-slate-800 tracking-tight">{n.time}</span>
+                                        {isUnread && (
+                                          <span className="text-[8px] font-black uppercase text-blue-600 bg-blue-550/10 border border-blue-150 px-1.5 py-0.5 rounded-md leading-none">
+                                            Новое
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-[5px] border ${
+                                          n.group === "Сигналы"
+                                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                            : n.group === "Арбитраж"
+                                            ? "bg-amber-50 text-amber-600 border-amber-100"
+                                            : n.group === "События исполнения"
+                                            ? "bg-blue-50 text-blue-600 border-blue-100"
+                                            : "bg-slate-50 text-slate-600 border-slate-200"
+                                        }`}>
+                                          {n.group}
+                                        </span>
+                                        
+                                        <span className={`text-[7.5px] font-black uppercase rounded-sm px-1.5 py-0.5 ${
+                                          n.priority === "NEW" 
+                                            ? "bg-amber-50 text-amber-600 border border-amber-200" 
+                                            : "bg-purple-50 text-purple-600 border border-purple-200"
+                                        }`}>
+                                          {n.priority}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Middle row: Icon, Title & Subtitle */}
+                                    <div className="flex items-start gap-2.5">
+                                      <div className="mt-0.5 shrink-0">
+                                        {isSystem ? (
+                                          <div className="p-1 rounded bg-slate-100 border border-slate-200 text-slate-500 select-none">
+                                            <Settings size={12} className="stroke-[2.5]" />
+                                          </div>
+                                        ) : isExecEvent ? (
+                                          <div className="p-1 rounded bg-blue-500/10 border border-blue-200 text-blue-600 select-none">
+                                            <Info size={12} className="stroke-[2.5]" />
+                                          </div>
+                                        ) : isSignal ? (
+                                          <div className="p-1 rounded bg-emerald-500/10 border border-emerald-250 text-emerald-600 relative select-none">
+                                            <Zap size={12} className="stroke-[2.5]" />
+                                            {isUnread && (
+                                              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="p-1 rounded bg-amber-500/10 border border-amber-200 text-amber-600 select-none">
+                                            <AlertCircle size={12} className="stroke-[2.5]" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      
+                                      <div className="flex-1 min-w-0 space-y-0.5">
+                                        <h3 className="text-xs font-black text-slate-800 tracking-tight leading-snug">
+                                          {n.title}
+                                        </h3>
+                                        <p className="text-[10px] font-bold text-slate-400 tracking-tight leading-normal">
+                                          {n.subtitle}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Bottom row: Route/Source description & Value Tag & Inline Clear Actions */}
+                                    <div className="flex items-center justify-between border-t border-slate-200/40 pt-2.5 mt-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                          <span className="font-mono text-slate-500 text-[9.5px] truncate max-w-[130px]">{n.source}</span>
+                                        </div>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                        <span className={`font-mono font-black text-xs ${
+                                          n.valueColor === "green" 
+                                            ? "text-emerald-550" 
+                                            : n.valueColor === "red" 
+                                            ? "text-rose-550" 
+                                            : n.valueColor === "purple" 
+                                            ? "text-purple-550" 
+                                            : "text-blue-550"
+                                        }`}>
+                                          {n.value}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <button 
+                                          onClick={(e) => handleToggleReadStatus(n.id, e)}
+                                          title={isUnread ? "Пометить как прочитанное" : "Пометить как непрочитанное"}
+                                          className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 transition-all cursor-pointer active:scale-90"
+                                        >
+                                          <Check size={11} className={!isUnread ? "text-emerald-500 stroke-[3]" : ""} />
+                                        </button>
+                                        <button 
+                                          onClick={(e) => handleClearSingle(n.id, e)}
+                                          title="Удалить уведомление"
+                                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-all cursor-pointer active:scale-90"
+                                        >
+                                          <X size={11} />
+                                        </button>
+                                        <div className="p-1 bg-slate-50 border border-slate-200 rounded-md text-slate-400">
+                                          {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* --- DESKTOP VIEW: >= md (Perfect intact Grid) --- */}
+                                  <div className="hidden md:grid grid-cols-12 gap-3 items-center">
+                                    {/* Left Time/Checkbox column */}
+                                    <div className="col-span-1 flex items-center gap-3">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={isSelected}
+                                        onChange={(e) => handleSelectRow(n.id, e as any)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-3.5 h-3.5 text-blue-600 rounded-sm border-slate-300 focus:ring-blue-500 cursor-pointer shrink-0 accent-blue-600"
+                                      />
+                                      <div className="flex flex-col">
+                                        <span className="font-mono text-[11px] font-black text-slate-800 tracking-tight">{n.time}</span>
+                                        <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider leading-none mt-0.5">
+                                          {n.status}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Title/Subtitle column */}
+                                    <div className="col-span-4 space-y-1.5 min-w-0 pr-2">
+                                      <div className="flex items-center gap-2">
+                                        {isSystem ? (
+                                          <div className="p-1 rounded bg-slate-100 border border-slate-200 text-slate-500 shrink-0 select-none">
+                                            <Settings size={12} className="stroke-[2.5]" />
+                                          </div>
+                                        ) : isExecEvent ? (
+                                          <div className="p-1 rounded bg-blue-500/10 border border-blue-200 text-blue-600 shrink-0 select-none">
+                                            <Info size={12} className="stroke-[2.5]" />
+                                          </div>
+                                        ) : isSignal ? (
+                                          <div className="p-1 rounded bg-emerald-500/10 border border-emerald-250 text-emerald-600 shrink-0 relative select-none">
+                                            <Zap size={12} className="stroke-[2.5]" />
+                                            {isUnread && (
+                                              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="p-1 rounded bg-amber-500/10 border border-amber-200 text-amber-600 shrink-0 select-none">
+                                            <AlertCircle size={12} className="stroke-[2.5]" />
+                                          </div>
+                                        )}
+                                        <h3 className="text-xs font-black text-slate-800 tracking-tight truncate leading-none">
+                                          {n.title}
+                                        </h3>
+                                      </div>
+                                      <p className="text-[10px] font-semibold text-slate-400 truncate tracking-tight pl-7">
+                                        {n.subtitle}
+                                      </p>
+                                    </div>
+
+                                    {/* Source Column */}
+                                    <div className="col-span-3 text-left md:text-center text-[10.5px] font-bold text-slate-500 flex items-center justify-start md:justify-center gap-1.5 font-mono">
+                                      <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider">источник:</span>
+                                      <span>{n.source}</span>
+                                    </div>
+
+                                    {/* Value Column */}
+                                    <div className="col-span-1.5 text-left md:text-right font-black font-mono text-xs">
+                                      <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider mr-1.5">значение:</span>
+                                      <span className={
+                                        n.valueColor === "green" 
+                                          ? "text-emerald-500" 
+                                          : n.valueColor === "red" 
+                                          ? "text-rose-500" 
+                                          : n.valueColor === "purple" 
+                                          ? "text-purple-500 font-bold" 
+                                          : "text-blue-500"
+                                      }>
+                                        {n.value}
                                       </span>
                                     </div>
-                                  </div>
 
-                                  {/* Title/Subtitle column */}
-                                  <div className="col-span-4 space-y-1.5 min-w-0 pr-2">
-                                    <div className="flex items-center gap-2">
-                                      {isSystem ? (
-                                        <div className="p-1 rounded bg-slate-100 border border-slate-200 text-slate-500 shrink-0 select-none">
-                                          <Settings size={12} className="stroke-[2.5]" />
-                                        </div>
-                                      ) : isExecEvent ? (
-                                        <div className="p-1 rounded bg-blue-500/10 border border-blue-200 text-blue-600 shrink-0 select-none">
-                                          <Info size={12} className="stroke-[2.5]" />
-                                        </div>
-                                      ) : isSignal ? (
-                                        <div className="p-1 rounded bg-emerald-500/10 border border-emerald-250 text-emerald-600 shrink-0 relative select-none">
-                                          <Zap size={12} className="stroke-[2.5]" />
-                                          {isUnread && (
-                                            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <div className="p-1 rounded bg-amber-500/10 border border-amber-200 text-amber-600 shrink-0 select-none">
-                                          <AlertCircle size={12} className="stroke-[2.5]" />
-                                        </div>
-                                      )}
-                                      <h3 className="text-xs font-black text-slate-800 tracking-tight truncate leading-none">
-                                        {n.title}
-                                      </h3>
-                                    </div>
-                                    <p className="text-[10px] font-semibold text-slate-400 truncate tracking-tight pl-7">
-                                      {n.subtitle}
-                                    </p>
-                                  </div>
-
-                                  {/* Source Column */}
-                                  <div className="col-span-3 text-left md:text-center text-[10.5px] font-bold text-slate-500 flex items-center justify-start md:justify-center gap-1.5 font-mono">
-                                    <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider">источник:</span>
-                                    <span>{n.source}</span>
-                                  </div>
-
-                                  {/* Value Column */}
-                                  <div className="col-span-1.5 text-left md:text-right font-black font-mono text-xs">
-                                    <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider mr-1.5">значение:</span>
-                                    <span className={
-                                      n.valueColor === "green" 
-                                        ? "text-emerald-500" 
-                                        : n.valueColor === "red" 
-                                        ? "text-rose-500" 
-                                        : n.valueColor === "purple" 
-                                        ? "text-purple-500 font-bold" 
-                                        : "text-blue-500"
-                                    }>
-                                      {n.value}
-                                    </span>
-                                  </div>
-
-                                  {/* Priority Badge */}
-                                  <div className="col-span-1 text-left md:text-center shrink-0">
-                                    <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider mr-1.5">приоритет:</span>
-                                    <span className={`text-[9px] font-black uppercase rounded-sm px-1.5 py-0.5 ${
-                                      n.priority === "NEW" 
-                                        ? "bg-amber-50 text-amber-600 border border-amber-200" 
-                                        : "bg-purple-50 text-purple-600 border border-purple-200"
-                                    }`}>
-                                      {n.priority}
-                                    </span>
-                                  </div>
-
-                                  {/* Channel Column */}
-                                  <div className="col-span-0.5 text-left md:text-center text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono">
-                                    <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider mr-1.5">канал:</span>
-                                    <span>{n.channel}</span>
-                                  </div>
-
-                                  {/* Group Badge & Quick Actions */}
-                                  <div className="col-span-1 flex items-center justify-between md:justify-end gap-3 shrink-0">
-                                    <div className="md:text-right">
-                                      <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider mr-1.5">группа: </span>
-                                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-[6px] border ${
-                                        n.group === "Сигналы"
-                                          ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                          : n.group === "Арбитраж"
-                                          ? "bg-amber-50 text-amber-600 border-amber-100"
-                                          : n.group === "События исполнения"
-                                          ? "bg-blue-50 text-blue-600 border-blue-100"
-                                          : "bg-slate-50 text-slate-600 border-slate-200"
+                                    {/* Priority Badge */}
+                                    <div className="col-span-1 text-left md:text-center shrink-0">
+                                      <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider mr-1.5">приоритет:</span>
+                                      <span className={`text-[9px] font-black uppercase rounded-sm px-1.5 py-0.5 ${
+                                        n.priority === "NEW" 
+                                          ? "bg-amber-50 text-amber-600 border border-amber-200" 
+                                          : "bg-purple-50 text-purple-600 border border-purple-200"
                                       }`}>
-                                        {n.group}
+                                        {n.priority}
                                       </span>
                                     </div>
 
-                                    {/* Inline item clear buttons */}
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <button 
-                                        onClick={(e) => handleToggleReadStatus(n.id, e)}
-                                        title={isUnread ? "Пометить как прочитанное" : "Пометить как непрочитанное"}
-                                        className="p-1 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded transition-all hidden md:block cursor-pointer active:scale-90"
-                                      >
-                                        <Check size={11} className={!isUnread ? "text-emerald-500 stroke-[3]" : ""} />
-                                      </button>
-                                      <button 
-                                        onClick={(e) => handleClearSingle(n.id, e)}
-                                        title="Удалить уведомление"
-                                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-all cursor-pointer active:scale-90"
-                                      >
-                                        <X size={11} />
-                                      </button>
-                                      <span className="text-slate-400 md:hidden p-0.5">
-                                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                      </span>
+                                    {/* Channel Column */}
+                                    <div className="col-span-0.5 text-left md:text-center text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono">
+                                      <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider mr-1.5">канал:</span>
+                                      <span>{n.channel}</span>
+                                    </div>
+
+                                    {/* Group Badge & Quick Actions */}
+                                    <div className="col-span-1 flex items-center justify-between md:justify-end gap-3 shrink-0">
+                                      <div className="md:text-right">
+                                        <span className="text-[9px] font-black text-slate-300 uppercase md:hidden tracking-wider mr-1.5">группа: </span>
+                                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-[6px] border ${
+                                          n.group === "Сигналы"
+                                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                            : n.group === "Арбитраж"
+                                            ? "bg-amber-50 text-amber-600 border-amber-100"
+                                            : n.group === "События исполнения"
+                                            ? "bg-blue-50 text-blue-600 border-blue-100"
+                                            : "bg-slate-50 text-slate-600 border-slate-200"
+                                        }`}>
+                                          {n.group}
+                                        </span>
+                                      </div>
+
+                                      {/* Inline item clear buttons */}
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button 
+                                          onClick={(e) => handleToggleReadStatus(n.id, e)}
+                                          title={isUnread ? "Пометить как прочитанное" : "Пометить как непрочитанное"}
+                                          className="p-1 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded transition-all hidden md:block cursor-pointer active:scale-90"
+                                        >
+                                          <Check size={11} className={!isUnread ? "text-emerald-500 stroke-[3]" : ""} />
+                                        </button>
+                                        <button 
+                                          onClick={(e) => handleClearSingle(n.id, e)}
+                                          title="Удалить уведомление"
+                                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-all cursor-pointer active:scale-90"
+                                        >
+                                          <X size={11} />
+                                        </button>
+                                        <span className="text-slate-400 md:hidden p-0.5">
+                                          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -784,12 +909,12 @@ export function NotificationsPage({
                                     >
                                       <div className="p-5 md:p-6.5 grid grid-cols-1 md:grid-cols-12 gap-6 w-full text-xs">
                                         {/* Left block: Detailed summary information */}
-                                        <div className="md:col-span-8 space-y-3.5">
+                                        <div className="md:col-span-12 space-y-3.5">
                                           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/50 pb-1.5 flex items-center gap-1">
                                             <Info size={11} className="text-slate-400" />
                                             подробный текст уведомления
                                           </h4>
-                                          <p className="text-[11.5px] font-bold text-slate-500 leading-relaxed font-sans max-w-2xl bg-white border border-slate-100/80 p-4 rounded-xl shadow-2xs">
+                                          <p className="text-[11.5px] font-bold text-slate-500 leading-relaxed font-sans w-full bg-white border border-slate-100/80 p-4 rounded-xl shadow-2xs">
                                             {n.detailedText}
                                           </p>
                                           {isSignal && onGoToSignal && (
@@ -801,29 +926,6 @@ export function NotificationsPage({
                                               <ArrowUpRight size={12} strokeWidth={2.5} />
                                             </button>
                                           )}
-                                        </div>
-
-                                        {/* Right block: Extra params metrics */}
-                                        <div className="md:col-span-4 flex flex-col justify-between p-5 bg-white border border-slate-200/60 rounded-2xl shadow-2xs">
-                                          <div className="space-y-4 w-full">
-                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">
-                                              ПАРАМЕТРЫ
-                                            </h4>
-                                            <div className="space-y-3 text-xs">
-                                              {n.parameters.map((p, pIndex) => {
-                                                const hasExplicitBorder = p.tagStyle?.includes("border-");
-                                                const borderClass = hasExplicitBorder ? "border" : "border border-slate-200/50";
-                                                return (
-                                                  <div key={pIndex} className="flex justify-between items-center py-0.5 border-b border-slate-50 last:border-0 pb-1.5 last:pb-0">
-                                                    <span className="font-bold text-slate-400">{p.name}</span>
-                                                    <span className={`px-2 py-0.5 text-[10.5px] font-extrabold rounded-[5px] truncate max-w-[200px] ${borderClass} ${p.tagStyle || "bg-slate-50 text-slate-600"}`}>
-                                                      {p.value}
-                                                    </span>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          </div>
                                         </div>
                                       </div>
                                     </motion.div>
@@ -841,7 +943,9 @@ export function NotificationsPage({
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch min-h-[550px]" id="notifications-split-view">
                     
                     {/* Left Mini-List Column */}
-                    <div className="lg:col-span-5 flex flex-col space-y-2.5 max-h-[750px] overflow-y-auto pr-2 relative scrollbar-thin">
+                    <div className={`lg:col-span-5 flex flex-col space-y-2.5 max-h-[750px] overflow-y-auto pr-2 relative scrollbar-thin ${
+                      mobileActiveView === 'list' ? 'flex' : 'hidden lg:flex'
+                    }`}>
                       <AnimatePresence initial={false}>
                         {filteredNotifications.length === 0 ? (
                           <div className="bg-white border border-slate-200/60 rounded-[24px] p-10 text-center flex flex-col items-center justify-center space-y-3">
@@ -881,7 +985,10 @@ export function NotificationsPage({
                                     ? "bg-white border-slate-300 hover:border-slate-405 hover:bg-slate-50/10 shadow-3xs"
                                     : "bg-white border-slate-200/60 hover:bg-slate-50/50 hover:border-slate-300"
                                 }`}
-                                onClick={() => setExpandedId(n.id)}
+                                onClick={() => {
+                                  setExpandedId(n.id);
+                                  setMobileActiveView('detail');
+                                }}
                               >
                                 {/* Left Unread alert indicator */}
                                 {isUnread && (
@@ -968,7 +1075,9 @@ export function NotificationsPage({
                     </div>
 
                     {/* Right Detailed Panel Column */}
-                    <div className="lg:col-span-7 flex flex-col h-full">
+                    <div className={`lg:col-span-7 flex flex-col h-full ${
+                      mobileActiveView === 'detail' ? 'flex' : 'hidden lg:flex'
+                    }`}>
                       <AnimatePresence mode="wait">
                         {(() => {
                           const activeNotif = notifications.find(n => n.id === expandedId);
@@ -982,6 +1091,16 @@ export function NotificationsPage({
                                 exit={{ opacity: 0, scale: 0.97 }}
                                 className="flex-1 flex flex-col items-center justify-center p-8 bg-white border border-slate-200/60 rounded-[28px] text-center space-y-4 min-h-[450px]"
                               >
+                                {/* Mobile back button if no notification is active but we are somehow in detail pane on mobile */}
+                                <div className="lg:hidden w-full flex justify-start pb-2 border-b border-slate-100 mb-2">
+                                  <button
+                                    onClick={() => setMobileActiveView('list')}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-bold text-xs shadow-3xs cursor-pointer select-none"
+                                  >
+                                    <ChevronLeft size={14} />
+                                    <span>Назад к списку</span>
+                                  </button>
+                                </div>
                                 <div className="w-14 h-14 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-350">
                                   <Bell size={24} className="animate-spin duration-[3000ms]" />
                                 </div>
@@ -1006,6 +1125,21 @@ export function NotificationsPage({
                               transition={{ duration: 0.2 }}
                               className="flex-1 bg-white border border-slate-200 rounded-[22px] md:rounded-[28px] p-5 sm:p-6 flex flex-col justify-between shadow-xs relative overflow-hidden"
                             >
+                              {/* Mobile Navigation Back Header */}
+                              <div className="lg:hidden flex items-center justify-between border-b border-slate-100 pb-3 mb-4 shrink-0">
+                                <button
+                                  onClick={() => setMobileActiveView('list')}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-bold text-xs shadow-3xs cursor-pointer select-none"
+                                >
+                                  <ChevronLeft size={14} className="text-slate-500" />
+                                  <span>Назад к списку</span>
+                                </button>
+                                
+                                <span className="text-[9px] bg-slate-100 border border-slate-200/60 text-slate-500 font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                  Детали
+                                </span>
+                              </div>
+
                               {/* Card Content Top Block */}
                               <div className="space-y-5">
                                 {/* Header actions row: Group & Quick Toggles */}
@@ -1065,7 +1199,7 @@ export function NotificationsPage({
                                   <div className="flex items-center gap-2 font-mono text-[10.5px] text-slate-400 font-semibold select-all">
                                     <span className="text-slate-300">Путь:</span>
                                     <span>{activeNotif.source}</span>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-250" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                                     <span className="text-slate-300">Значение:</span>
                                     <span className={
                                       activeNotif.valueColor === "green" 

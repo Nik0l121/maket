@@ -23,11 +23,13 @@ import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { NotificationsPage, initialNotifications } from "./pages/NotificationsPage";
 import { BalancePage } from "./pages/BalancePage";
 import { FaqPage } from "./pages/FaqPage";
+import { AuthPage } from "./pages/AuthPage";
 import { NotificationItem } from "./types";
 import { useToast } from "./components/Toast";
 
 export default function App() {
   const { showToast } = useToast();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState("Admin");
   const [email, setEmail] = useState("gavrfil@gmail.com");
   const [phone, setPhone] = useState("+79053440725");
@@ -38,6 +40,9 @@ export default function App() {
   const [isScannerRunning, setIsScannerRunning] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<any>(null);
 
+  // Lifted Arbitrage Running State
+  const [runningArbitrages, setRunningArbitrages] = useState<any[]>([]);
+
   // Lifted Notification States
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [activeGroupFilter, setActiveGroupFilter] = useState("Все");
@@ -46,6 +51,33 @@ export default function App() {
   // Lifted Balance States
   const [selectedExchangeFilter, setSelectedExchangeFilter] = useState("Все");
   const [balanceSubView, setBalanceSubView] = useState("Отчет по активам");
+
+  // Page Loading States
+  const [isLoadingPage, setIsLoadingPage] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+
+  const getLoadingMessage = (tabName: string) => {
+    switch (tabName) {
+      case "Сканер":
+        return "Инициализация алгоритмов сканера...";
+      case "Профиль":
+        return "Синхронизация профиля...";
+      case "Безопасность":
+        return "Проверка сертификатов защиты...";
+      case "API-ключи":
+        return "Расшифровка API-конфигураций...";
+      case "Подписка":
+        return "Сверка подписки с контрактами...";
+      case "Уведомления":
+        return "Загрузка журнала сигналов...";
+      case "Баланс":
+        return "Сбор балансов по биржам...";
+      case "FAQ":
+        return "Интеграция базы знаний...";
+      default:
+        return "Синхронизация данных...";
+    }
+  };
 
   const handleSave = () => {
     setIsSaving(true);
@@ -57,18 +89,27 @@ export default function App() {
 
 
   const handleActiveTabChange = (name: string) => {
-    setActiveTab(name);
-    if (name === "Сканер") {
-      setActiveHeaderNav("Сканер");
-    } else if (["Профиль", "Безопасность", "API-ключи", "Подписка"].includes(name)) {
-      setActiveHeaderNav("Аккаунт");
-    } else if (name === "Уведомления") {
-      setActiveHeaderNav("Уведомления");
-    } else if (name === "Баланс") {
-      setActiveHeaderNav("Баланс");
-    } else if (name === "FAQ") {
-      setActiveHeaderNav("FAQ");
-    }
+    setLoadingText(getLoadingMessage(name));
+    setIsLoadingPage(true);
+
+    setTimeout(() => {
+      setActiveTab(name);
+      if (name === "Сканер") {
+        setActiveHeaderNav("Сканер");
+      } else if (["Профиль", "Безопасность", "API-ключи", "Подписка"].includes(name)) {
+        setActiveHeaderNav("Аккаунт");
+      } else if (name === "Уведомления") {
+        setActiveHeaderNav("Уведомления");
+      } else if (name === "Баланс") {
+        setActiveHeaderNav("Баланс");
+      } else if (name === "FAQ") {
+        setActiveHeaderNav("FAQ");
+      }
+
+      setTimeout(() => {
+        setIsLoadingPage(false);
+      }, 150);
+    }, 450);
   };
 
   const handleGoToSignal = (pairName: string) => {
@@ -110,6 +151,18 @@ export default function App() {
     { name: "FAQ", icon: <HelpCircle size={18} /> },
   ];
 
+  if (!isLoggedIn) {
+    return (
+      <AuthPage 
+        onLoginSuccess={(newEmail, newUser) => {
+          setEmail(newEmail);
+          setUsername(newUser);
+          setIsLoggedIn(true);
+        }} 
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen bg-[#F9FAFB] font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden">
       {/* Background Pattern */}
@@ -120,23 +173,26 @@ export default function App() {
         headerNav={headerNav}
         activeHeaderNav={activeHeaderNav}
         setActiveHeaderNav={(name) => {
-          setActiveHeaderNav(name);
-          if (name === "Сканер") setActiveTab("Сканер");
-          if (name === "Аккаунт") setActiveTab("Профиль");
-          if (name === "Уведомления") setActiveTab("Уведомления");
-          if (name === "Баланс") setActiveTab("Баланс");
-          if (name === "FAQ") setActiveTab("FAQ");
+          if (name === "Сканер") handleActiveTabChange("Сканер");
+          if (name === "Аккаунт") handleActiveTabChange("Профиль");
+          if (name === "Уведомления") handleActiveTabChange("Уведомления");
+          if (name === "Баланс") handleActiveTabChange("Баланс");
+          if (name === "FAQ") handleActiveTabChange("FAQ");
         }}
         username={username}
         email={email}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
+        onLogout={() => {
+          setIsLoggedIn(false);
+          showToast("Вы успешно вышли из учетной записи", "info");
+        }}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar Overlay (Mobile) */}
         <AnimatePresence>
-          {isSidebarOpen && (
+          {isSidebarOpen && activeTab !== "FAQ" && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -147,32 +203,93 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <Sidebar 
-          isSidebarOpen={isSidebarOpen}
-          navItems={navItems}
-          activeTab={activeTab}
-          setActiveTab={handleActiveTabChange}
-          setIsSidebarOpen={setIsSidebarOpen}
-          isScannerTab={activeTab === "Сканер"}
-          isScannerRunning={isScannerRunning}
-          setIsScannerRunning={setIsScannerRunning}
-          notifications={notifications}
-          activeGroupFilter={activeGroupFilter}
-          setActiveGroupFilter={setActiveGroupFilter}
-          isSettingsMode={isSettingsMode}
-          setIsSettingsMode={setIsSettingsMode}
-          selectedExchangeFilter={selectedExchangeFilter}
-          setSelectedExchangeFilter={setSelectedExchangeFilter}
-          balanceSubView={balanceSubView}
-          setBalanceSubView={setBalanceSubView}
-        />
+        {activeTab !== "FAQ" && (
+          <Sidebar 
+            isSidebarOpen={isSidebarOpen}
+            navItems={navItems}
+            activeTab={activeTab}
+            setActiveTab={handleActiveTabChange}
+            setIsSidebarOpen={setIsSidebarOpen}
+            isScannerTab={activeTab === "Сканер"}
+            isScannerRunning={isScannerRunning}
+            setIsScannerRunning={setIsScannerRunning}
+            notifications={notifications}
+            activeGroupFilter={activeGroupFilter}
+            setActiveGroupFilter={setActiveGroupFilter}
+            isSettingsMode={isSettingsMode}
+            setIsSettingsMode={setIsSettingsMode}
+            selectedExchangeFilter={selectedExchangeFilter}
+            setSelectedExchangeFilter={setSelectedExchangeFilter}
+            balanceSubView={balanceSubView}
+            setBalanceSubView={setBalanceSubView}
+            runningArbitrages={runningArbitrages}
+            setRunningArbitrages={setRunningArbitrages}
+            onSelectRunningArbitrage={(arb) => {
+              if (arb) {
+                setSelectedSignal(arb.signal);
+                if (activeTab !== "Сканер") {
+                  handleActiveTabChange("Сканер");
+                }
+              }
+            }}
+          />
+        )}
 
         {/* Main Content Area */}
         <main id="main-content" className="flex-1 overflow-y-auto relative z-10 flex flex-col">
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col relative">
+            {/* Top progress indicator bar */}
+            <AnimatePresence>
+              {isLoadingPage && (
+                <motion.div 
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.45, ease: "easeInOut" }}
+                  className="h-1 bg-gradient-to-r from-blue-500 to-indigo-600 absolute top-0 left-0 right-0 z-50 shadow-[0_1px_5px_rgba(59,130,246,0.3)]"
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Dynamic visual page loading screen */}
+            <AnimatePresence>
+              {isLoadingPage && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#F9FAFB]/90 backdrop-blur-xs min-h-[400px]"
+                >
+                  <div className="flex flex-col items-center space-y-5">
+                    {/* Pulsating dual-orbit loading animation */}
+                    <div className="relative w-14 h-14">
+                      <div className="absolute inset-0 rounded-full border border-slate-200/60" />
+                      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 border-r-blue-500 animate-spin" />
+                      <div className="absolute inset-2 rounded-full border-2 border-transparent border-b-blue-300 border-l-blue-300 rotate-180 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }} />
+                    </div>
+
+                    <div className="space-y-1.5 text-center">
+                      <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                        ПОДКЛЮЧЕНИЕ К СЕТИ
+                      </h3>
+                      <p className="text-xs font-bold text-slate-700 tracking-tight">
+                        {loadingText || "Синхронизация данных..."}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <AnimatePresence mode="wait">
               {activeTab === "Сканер" ? (
-                <ScannerPage key="scanner" onSelectSignal={setSelectedSignal} isScannerRunning={isScannerRunning} />
+                <ScannerPage 
+                  key="scanner" 
+                  onSelectSignal={setSelectedSignal} 
+                  isScannerRunning={isScannerRunning} 
+                  setIsScannerRunning={setIsScannerRunning} 
+                />
               ) : activeTab === "Безопасность" ? (
                 <SecurityPage key="security" />
               ) : activeTab === "API-ключи" ? (
@@ -217,7 +334,12 @@ export default function App() {
         {/* Signal Drawer Overlay */}
         <AnimatePresence>
           {selectedSignal && (
-            <SignalDrawer signal={selectedSignal} onClose={() => setSelectedSignal(null)} />
+            <SignalDrawer 
+              signal={selectedSignal} 
+              onClose={() => setSelectedSignal(null)} 
+              runningArbitrages={runningArbitrages}
+              setRunningArbitrages={setRunningArbitrages}
+            />
           )}
         </AnimatePresence>
       </div>
