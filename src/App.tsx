@@ -299,8 +299,10 @@ export default function App() {
                   <ScannerPage 
                     key="scanner" 
                     onSelectSignal={setSelectedSignal} 
+                    onShowDetailedAnalysis={setDetailedSignal}
                     isScannerRunning={isScannerRunning} 
                     setIsScannerRunning={setIsScannerRunning} 
+                    runningArbitrages={runningArbitrages}
                   />
                 )
               ) : activeTab === "Безопасность" ? (
@@ -357,6 +359,41 @@ export default function App() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="lg:hidden h-16 flex-shrink-0 bg-white border-t border-slate-200/80 flex items-center justify-around px-2 relative z-30 pb-safe shadow-lg select-none">
+        {headerNav.map((nav) => {
+          const isActive = activeHeaderNav === nav.name;
+          return (
+            <button
+              key={nav.name}
+              onClick={() => {
+                if (nav.name === "Сканер") handleActiveTabChange("Сканер");
+                if (nav.name === "Аккаунт") handleActiveTabChange("Профиль");
+                if (nav.name === "Уведомления") handleActiveTabChange("Уведомления");
+                if (nav.name === "Баланс") handleActiveTabChange("Баланс");
+                if (nav.name === "FAQ") handleActiveTabChange("FAQ");
+              }}
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all relative ${
+                isActive ? "text-blue-600" : "text-slate-400 hover:text-slate-700"
+              }`}
+            >
+              <div className={`p-1 transition-transform duration-200 ${isActive ? "scale-110 text-blue-600" : "text-slate-400 font-bold"}`}>
+                {React.cloneElement(nav.icon as React.ReactElement, { size: 18 })}
+              </div>
+              <span className={`text-[8.5px] font-black tracking-tight uppercase mt-0.5 leading-none transition-colors duration-200 ${
+                isActive ? "text-blue-600" : "text-slate-400"
+              }`}>{nav.name === "Аккаунт" ? "Аккаунт" : nav.name}</span>
+              {isActive && (
+                <motion.div 
+                  layoutId="active-dot-mobile"
+                  className="absolute bottom-1 w-1 h-1 bg-blue-600 rounded-full"
+                />
+              )}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

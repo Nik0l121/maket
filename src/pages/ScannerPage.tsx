@@ -11,7 +11,7 @@ import {
   RefreshCw,
   X,
   Lock,
-  ArrowUpRight,
+  ArrowUpRight, 
   Clock,
   Coins,
   ArrowRightLeft,
@@ -49,7 +49,7 @@ export function SignalDrawer(props: {
   // State for balance
   const [balance, setBalance] = useState<number>(11.72);
   const [confirmed, setConfirmed] = useState<boolean>(true);
-  const [orderType, setOrderType] = useState<"market" | "limit">("market");
+  const [orderType, setOrderType] = useState<"market" | "limit">("limit");
   const [executionMode, setExecutionMode] = useState<"parallel" | "sequential">("sequential");
 
   // Keep track of previous prices to show green/red flashes on change
@@ -487,7 +487,7 @@ export function SignalDrawer(props: {
                     </div>
 
                     {/* Percentage buttons */}
-                    <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-200/40">
+                    <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-200/40 font-mono">
                       {[0.25, 0.50, 0.75, 1.0].map((pct) => (
                         <button
                           key={pct}
@@ -501,81 +501,6 @@ export function SignalDrawer(props: {
                       ))}
                     </div>
                   </div>
-
-                  {/* CEX order config selectors row */}
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    {/* Order Type */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-455 block">Тип ордеров на CEX</span>
-                      <div className="relative flex items-center">
-                        <select
-                          disabled={isExecuting}
-                          value={orderType}
-                          onChange={(e) => setOrderType(e.target.value as any)}
-                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-800 focus:outline-none cursor-pointer"
-                        >
-                          <option value="market">Market (Мгновенно)</option>
-                          <option value="limit">Limit (Лимит-ордер)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Execution Mode */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-455 block">Режим исполнения</span>
-                      <div className="relative flex items-center">
-                        <select
-                          disabled={isExecuting}
-                          value={executionMode}
-                          onChange={(e) => setExecutionMode(e.target.value as any)}
-                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-850 focus:outline-none cursor-pointer"
-                        >
-                          <option value="sequential">Последовательно (Safe)</option>
-                          <option value="parallel">Параллельно (Fast)</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 6. Route Diagram Map Panel */}
-                <div className="space-y-1.5 text-left">
-                  <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Маршрут</span>
-                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 space-y-2 font-mono text-[10.5px]">
-                    <div className="flex justify-between items-center text-slate-400 font-sans text-[9px] uppercase font-bold mb-1">
-                      <span>Транзитный Маршрут</span>
-                      <span>Сеть перевода: {signal.network}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between gap-1 pt-1.5">
-                      <div className="flex flex-col text-left">
-                        <span className="text-xs font-black text-slate-800">{signal.buyDex}</span>
-                        <span className="text-[9px] text-slate-450 mt-0.5 font-sans">Покупка</span>
-                      </div>
-                      <div className="flex-1 flex flex-col items-center">
-                        <div className="w-full flex items-center justify-center gap-0.5 px-2">
-                          <div className="h-0.5 bg-blue-200 flex-1" />
-                          <span className="text-[8px] bg-blue-50 border border-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase leading-none font-sans">
-                            Перевод
-                          </span>
-                          <div className="h-0.5 bg-blue-200 flex-1" />
-                        </div>
-                      </div>
-                      <div className="flex flex-col text-right">
-                        <span className="text-xs font-black text-slate-800">{signal.sellDex}</span>
-                        <span className="text-[9px] text-slate-450 mt-0.5 font-sans">Продажа</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Important notice block below route */}
-                <div className="p-3 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2 text-[10px] text-amber-800 leading-relaxed font-sans text-left">
-                  <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
-                  <p className="font-medium font-sans">
-                    <span className="font-extrabold text-amber-900 block mb-0.5">Важно:</span>
-                    перед выводом на <span className="font-extrabold text-slate-850">{signal.sellDex}</span> нужно один раз подтвердить адрес кошелька депозита в настройках белого списка в личном кабинете.
-                  </p>
                 </div>
 
                 {/* 7. Detailed Spec Params table (ПАРАМЕТРЫ) */}
@@ -623,6 +548,66 @@ export function SignalDrawer(props: {
                   </div>
                 </div>
 
+                {/* 6. Route Diagram Map Panel */}
+                <div className="space-y-1.5 text-left">
+                  <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Маршрут</span>
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 space-y-2 font-mono text-[10.5px]">
+                    <div className="flex justify-between items-center text-slate-400 font-sans text-[9px] uppercase font-bold mb-1">
+                      <span>Транзитный Маршрут</span>
+                      <span>Сеть перевода: {signal.network}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-1 pt-1.5">
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-black text-slate-800">{signal.buyDex}</span>
+                        <span className="text-[9px] text-slate-450 mt-0.5 font-sans">Покупка</span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center">
+                        <div className="w-full flex items-center justify-center gap-0.5 px-2">
+                          <div className="h-0.5 bg-blue-200 flex-1" />
+                          <span className="text-[8px] bg-blue-50 border border-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold uppercase leading-none font-sans">
+                            Перевод
+                          </span>
+                          <div className="h-0.5 bg-blue-200 flex-1" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col text-right">
+                        <span className="text-xs font-black text-slate-800">{signal.sellDex}</span>
+                        <span className="text-[9px] text-slate-450 mt-0.5 font-sans">Продажа</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CEX order config parameters info block */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200/60 rounded-2xl space-y-2.5 text-left">
+                  <span className="text-[10px] font-black text-slate-455 uppercase tracking-wider block">Режим исполнения сделок</span>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    <div className="px-2.5 py-1.5 bg-white border border-slate-200/60 rounded-lg text-[10px] font-extrabold font-mono text-slate-700 inline-flex items-center gap-1.5 shadow-5xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                      Ордер: Limit (Лимитный)
+                    </div>
+                    <div className="px-2.5 py-1.5 bg-white border border-slate-200/60 rounded-lg text-[10px] font-extrabold font-mono text-slate-700 inline-flex items-center gap-1.5 shadow-5xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+                      Порядок: Последовательно
+                    </div>
+                  </div>
+
+                  <p className="text-[10.5px] text-slate-500 leading-relaxed font-sans font-medium">
+                    Для предотвращения ошибок исполнения на CEX биржах система автоматически выставляет безопасные <strong className="font-extrabold text-slate-700">лимитные ордера</strong> по целевой цене и проводит сделки строго <strong className="font-extrabold text-slate-700">последовательно</strong> (по очереди).
+                  </p>
+                </div>
+
+                {/* Important notice block below route */}
+                <div className="p-3 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2 text-[10px] text-amber-800 leading-relaxed font-sans text-left">
+                  <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
+                  <p className="font-medium font-sans">
+                    <span className="font-extrabold text-amber-900 block mb-0.5">Важно:</span>
+                    перед выводом на <span className="font-extrabold text-slate-850">{signal.sellDex}</span> нужно один раз подтвердить адрес кошелька депозита в настройках белого списка в личном кабинете.
+                  </p>
+                </div>
+
                 {/* 8. Simulated Steps Animation block "ЧТО ПРОИЗОЙДЕТ" */}
                 <div className="space-y-2 pt-2 text-left">
                   <div className="flex justify-between items-center px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -641,45 +626,146 @@ export function SignalDrawer(props: {
 
                     {/* Step-by-Step rendering */}
                     {(() => {
-                      const steps = [
-                        { id: 1, text: `Выставление ордера на покупку (${signal.buyDex})` },
-                        { id: 2, text: `Исполнение ордера на покупку (${signal.buyDex})` },
-                        { id: 3, text: `Перевод токена по сети ${signal.network}` },
-                        { id: 4, text: `Зачисление токенов на ${signal.sellDex}` },
-                        { id: 5, text: `Выставление ордера на продажу (${signal.sellDex})` },
-                        { id: 6, text: `Исполнение ордера на продажу (${signal.sellDex})` }
+                      const stepsDef = [
+                        { 
+                          id: 1, 
+                          title: `Выставление ордера купить на ${signal.buyDex}`,
+                          getDesc: (active: boolean, completed: boolean) => {
+                            if (completed) return `Успешно выставлен лимитный ордер на сумму ${parsedSum.toFixed(2)} USDT`;
+                            if (active) return `Формирование и отправка ордера на сумму ${parsedSum.toFixed(2)} USDT...`;
+                            return `Будет выделено ${parsedSum.toFixed(2)} USDT`;
+                          },
+                          getStatusText: (active: boolean, completed: boolean) => {
+                            if (completed) return "Создан";
+                            if (active) return "В процессе...";
+                            return "Ожидание";
+                          }
+                        },
+                        { 
+                          id: 2, 
+                          title: `Исполнение BUY ордера (закуп ${baseToken})`,
+                          getDesc: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 3) return `Куплено ${tokensBought.toFixed(2)} ${baseToken} по курсу $${parsedBuy.toFixed(5)}`;
+                            if (active) return `Поиск ликвидных встречных заявок по цене $${parsedBuy.toFixed(5)}...`;
+                            return `Целевой курс закупа: $${parsedBuy.toFixed(5)}`;
+                          },
+                          getStatusText: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 3) return "Выпонен";
+                            if (active) return "Подбор стакана...";
+                            return "Ожидание";
+                          }
+                        },
+                        { 
+                          id: 3, 
+                          title: `Трансфер токена по сети ${signal.network}`,
+                          getDesc: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 4) return `Переслано ${tokensBought.toFixed(2)} ${baseToken}. Сбор сети: $${networkFee.toFixed(4)}`;
+                            if (active) return `Инициализация транзакции в сети ${signal.network}. Ожидание подписи гейта...`;
+                            return `Комиссия перевода: $${networkFee.toFixed(4)}`;
+                          },
+                          getStatusText: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 4) return "Отправлен";
+                            if (active) return "В мемпуле...";
+                            return "Ожидание";
+                          }
+                        },
+                        { 
+                          id: 4, 
+                          title: `Зачисление токенов на ${signal.sellDex}`,
+                          getDesc: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 5) return `Зачислено на баланс ${tokensBought.toFixed(2)} ${baseToken} (подтверждено)`;
+                            if (active) return `Ожидание 1 блокчейн-подтверждения в сети ${signal.network}...`;
+                            return `Будет зачислено на баланс`;
+                          },
+                          getStatusText: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 5) return "Подтвержден";
+                            if (active) return "Сканирование...";
+                            return "Ожидание";
+                          }
+                        },
+                        { 
+                          id: 5, 
+                          title: `Выставление ордера продать на ${signal.sellDex}`,
+                          getDesc: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 6) return `Успешно выставлен лимитный ордер по цене $${parsedSell.toFixed(5)}`;
+                            if (active) return `Запуск встречного ордера по цене $${parsedSell.toFixed(5)}...`;
+                            return `Целевой курс продажи: $${parsedSell.toFixed(5)}`;
+                          },
+                          getStatusText: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 6) return "Выставлен";
+                            if (active) return "Публикация...";
+                            return "Ожидание";
+                          }
+                        },
+                        { 
+                          id: 6, 
+                          title: `Исполнение ордера SELL и фиксирование профита`,
+                          getDesc: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 7) return `Закрыто. Выручка: ${grossReturn.toFixed(2)} USDT, Нетто-профит: +${netProfit.toFixed(4)} USDT`;
+                            if (active) return `Исполнение ордера в стакане ${signal.sellDex}...`;
+                            return `Ожидаемый чистый профит: +${netProfit.toFixed(4)} USDT`;
+                          },
+                          getStatusText: (active: boolean, completed: boolean) => {
+                            if (completed || executionStep >= 7) return "Исполнен";
+                            if (active) return "Исполнение...";
+                            return "Ожидание";
+                          }
+                        }
                       ];
 
-                      return steps.map((st) => {
+                      return stepsDef.map((st) => {
                         const isCompleted = executionStep > st.id || (!isExecuting && executionStep === 7);
                         const isActive = isExecuting && executionStep === st.id;
 
                         return (
-                          <div key={st.id} className="flex items-center gap-3 relative z-10">
+                          <div key={st.id} className="flex gap-3 relative z-10 text-[11px] leading-tight select-none">
                             {/* Icon Indicator */}
-                            {isCompleted ? (
-                              <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-4xs font-black text-xs">
-                                ✓
-                              </div>
-                            ) : isActive ? (
-                              <div className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
-                                <div className="absolute inset-0 rounded-full border-2 border-indigo-100" />
-                                <div className="absolute inset-0 rounded-full border-2 border-t-indigo-500 border-r-indigo-500 animate-spin" />
-                              </div>
-                            ) : (
-                              <div className="w-5 h-5 rounded-full border-2 border-slate-100 bg-slate-50/60 flex-shrink-0" />
-                            )}
+                            <div className="pt-0.5 flex-shrink-0">
+                              {isCompleted ? (
+                                <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-4xs font-black text-[10px]">
+                                  ✓
+                                </div>
+                              ) : isActive ? (
+                                <div className="relative w-5 h-5 flex items-center justify-center">
+                                  <div className="absolute inset-0 rounded-full border-2 border-indigo-100" />
+                                  <div className="absolute inset-0 rounded-full border-2 border-t-indigo-500 border-r-indigo-500 animate-spin" />
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-[9px] font-bold text-slate-400">
+                                  {st.id}
+                                </div>
+                              )}
+                            </div>
 
-                            {/* Text label */}
-                            <span className={`text-[11px] transition-all duration-200 ${
-                              isActive 
-                                ? "text-slate-900 font-extrabold" 
-                                : isCompleted 
-                                  ? "text-slate-800 font-medium" 
-                                  : "text-slate-350 font-semibold"
-                            }`}>
-                              {st.text}
-                            </span>
+                            {/* Details text structure */}
+                            <div className="flex-1 flex flex-col space-y-0.5 text-left">
+                              <div className="flex justify-between items-baseline gap-2">
+                                <span className={`text-[11px] transition-all duration-200 ${
+                                  isActive 
+                                    ? "text-indigo-600 font-extrabold" 
+                                    : isCompleted 
+                                      ? "text-slate-800 font-bold" 
+                                      : "text-slate-400 font-semibold"
+                                }`}>
+                                  {st.title}
+                                </span>
+                                
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-extrabold uppercase shrink-0 ${
+                                  isCompleted 
+                                    ? "bg-emerald-50 text-emerald-700" 
+                                    : isActive 
+                                      ? "bg-indigo-50 text-indigo-700 animate-pulse" 
+                                      : "bg-slate-50 text-slate-400"
+                                }`}>
+                                  {st.getStatusText(isActive, isCompleted)}
+                                </span>
+                              </div>
+                              <span className={`text-[9.5px] transition-all duration-200 ${
+                                isActive ? "text-indigo-505 font-medium animate-pulse" : "text-slate-450 font-medium"
+                              }`}>
+                                {st.getDesc(isActive, isCompleted)}
+                              </span>
+                            </div>
                           </div>
                         );
                       });
@@ -782,21 +868,23 @@ export function SignalDrawer(props: {
           {activeDrawerTab === "launch" ? (
             <>
               {/* TERMS CHECKBOX CONFIRMATION */}
-              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-left">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    disabled={isExecuting}
-                    checked={confirmed}
-                    onChange={(e) => setConfirmed(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400 cursor-pointer"
-                  />
-                  <span className="text-[10px] leading-relaxed font-bold text-slate-500 font-sans select-none">
-                    Я ознакомлен с условиями арбитражной сделки, понимаю риски и даю согласие на автоматическое выполнение всех шагов.
-                    <span className="font-black text-slate-900 block mt-1 uppercase">Согласие подтверждено</span>
-                  </span>
-                </label>
-              </div>
+              {!isThisSignalRunning && (
+                <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-left">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      disabled={isExecuting}
+                      checked={confirmed}
+                      onChange={(e) => setConfirmed(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400 cursor-pointer"
+                    />
+                    <span className="text-[10px] leading-relaxed font-bold text-slate-500 font-sans select-none">
+                      Я ознакомлен с условиями арбитражной сделки, понимаю риски и даю согласие на автоматическое выполнение всех шагов.
+                      <span className="font-black text-slate-900 block mt-1 uppercase">Согласие подтверждено</span>
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {/* Execution outcomes status block within drawer */}
               {isThisSignalRunning && !isExecuting && executionStep === 7 ? (
@@ -857,12 +945,16 @@ export function SignalDrawer(props: {
 // --- Main Scanner Page ---
 export function ScannerPage({
   onSelectSignal,
+  onShowDetailedAnalysis,
   isScannerRunning,
   setIsScannerRunning,
+  runningArbitrages = [],
 }: {
   onSelectSignal: (signal: Signal) => void;
+  onShowDetailedAnalysis?: (signal: Signal) => void;
   isScannerRunning: boolean;
   setIsScannerRunning: (running: boolean) => void;
+  runningArbitrages?: any[];
   key?: React.Key;
 }) {
   const { showToast } = useToast();
@@ -1243,7 +1335,7 @@ export function ScannerPage({
           <div className="bg-white border border-slate-200/50 rounded-3xl p-4 shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             
             {/* Horizontal tab list with counters */}
-            <div className="flex flex-wrap gap-1">
+            <div className="flex overflow-x-auto scrollbar-none gap-1 pb-1.5 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 flex-nowrap md:flex-wrap">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
@@ -1286,7 +1378,7 @@ export function ScannerPage({
               <span className="col-span-3">СПРЕД И ROI</span>
               <span className="col-span-2 text-center">ПОКУПКА (CEX)</span>
               <span className="col-span-2 text-center">ПРОДАЖА (CEX)</span>
-              <span className="col-span-2 text-right">АНАЛИТИКА</span>
+              <span className="col-span-2 text-right">ДЕЙСТВИЯ</span>
             </div>
 
             {/* List rendered rows */}
@@ -1297,6 +1389,11 @@ export function ScannerPage({
                     const parsedSpread = parseFloat(s.spread.replace("%", ""));
                     const isPositive = parsedSpread >= 0;
 
+                    const activeArb = runningArbitrages.find((arb: any) => arb.signal.id === s.id);
+                    const hasActiveArb = !!activeArb;
+                    const isCurrentlyExecuting = hasActiveArb && activeArb.isExecuting;
+                    const arbStep = hasActiveArb ? activeArb.executionStep : 0;
+
                     return (
                       <motion.div
                         key={s.id}
@@ -1304,7 +1401,13 @@ export function ScannerPage({
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.25 }}
-                        className="p-5 md:px-6 md:py-4.5 grid grid-cols-1 md:grid-cols-12 gap-3.5 md:gap-2 items-center hover:bg-slate-50/30 transition-all group"
+                        className={`p-5 md:px-6 md:py-4.5 grid grid-cols-1 md:grid-cols-12 gap-3.5 md:gap-2 items-center hover:bg-slate-50/30 transition-all group border-l-4 ${
+                          isCurrentlyExecuting
+                            ? "bg-indigo-50/10 border-l-indigo-500 animate-[pulse_2.5s_infinite]"
+                            : hasActiveArb && arbStep === 7
+                              ? "bg-emerald-50/5 border-l-emerald-500"
+                              : "border-l-transparent"
+                        }`}
                       >
                         {/* Token label descriptor */}
                         <div className="col-span-3 flex items-center gap-3">
@@ -1324,9 +1427,22 @@ export function ScannerPage({
                                 {s.network}
                               </span>
                             </div>
-                            <span className="text-[10px] text-slate-400 font-bold block mt-1">
-                              Активен: {liveTimers[s.id] || "00:00:23"}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 mt-1">
+                              <span className="text-[10px] text-slate-400 font-bold block">
+                                Активен: {liveTimers[s.id] || "00:00:23"}
+                              </span>
+                              {isCurrentlyExecuting && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/70 rounded-md animate-pulse">
+                                  <span className="w-1 h-1 rounded-full bg-indigo-600 animate-ping" />
+                                  Арбитраж запущен ({Math.round(arbStep * 14.2)}%)
+                                </span>
+                              )}
+                              {hasActiveArb && !isCurrentlyExecuting && arbStep === 7 && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100/60 rounded-md">
+                                  ✓ Выполнен (+{(activeArb.netProfit || 0.2312).toFixed(4)} USDT)
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -1377,14 +1493,30 @@ export function ScannerPage({
                           </div>
                         </div>
 
-                        {/* Action details Drawer Trigger */}
-                        <div className="col-span-2 text-right pt-2 md:pt-0">
+                        {/* Action details Dual ButtonsTriggers */}
+                        <div className="col-span-2 flex flex-row md:flex-col lg:flex-row gap-1.5 justify-end items-center pt-2 md:pt-0">
                           <button
                             onClick={() => onSelectSignal(s)}
-                            className="w-full md:w-auto px-4 py-2 bg-slate-50 border border-slate-200 hover:bg-slate-900 hover:text-white rounded-xl font-black text-[10px] transition-all flex items-center justify-center gap-1 active:scale-95 duration-150"
+                            title="Открыть панель быстрых сделок"
+                            className="w-full lg:w-auto px-2 py-1.5 bg-amber-550/10 hover:bg-amber-500 hover:text-white text-amber-700 hover:border-amber-500 border border-amber-200/50 rounded-lg font-black text-[9.5px] tracking-tight transition-all flex items-center justify-center gap-1 active:scale-95 duration-110 flex-1 cursor-pointer"
                           >
-                            Подробнее
-                            <ChevronRight size={13} />
+                            <Zap size={11} />
+                            <span>Сделка</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              if (onShowDetailedAnalysis) {
+                                onShowDetailedAnalysis(s);
+                              } else {
+                                onSelectSignal(s);
+                              }
+                            }}
+                            title="Открыть детальные графики и аналитику"
+                            className="w-full lg:w-auto px-2 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 hover:border-blue-600 border border-blue-200/55 rounded-lg font-black text-[9.5px] tracking-tight transition-all flex items-center justify-center gap-1 active:scale-95 duration-110 flex-1 cursor-pointer"
+                          >
+                            <TrendingUp size={11} />
+                            <span>Анализ</span>
                           </button>
                         </div>
 

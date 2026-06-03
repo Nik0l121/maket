@@ -35,7 +35,7 @@ export function DetailedSignalAnalysis({
   runningArbitrages = [],
   setRunningArbitrages
 }: { 
-  signal: Signal; 
+  signal: Signal;  
   onClose: () => void;
   runningArbitrages?: any[];
   setRunningArbitrages?: (arbs: any) => void;
@@ -43,13 +43,14 @@ export function DetailedSignalAnalysis({
 }) {
   const { showToast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState<"1m" | "5m" | "1h">("1m");
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<"analysis" | "trade">("analysis");
   
   // Interactive Live simulation flags
   const [isSimulatingLivePrice, setIsSimulatingLivePrice] = useState<boolean>(true);
   const [priceDeviation, setPriceDeviation] = useState<number>(0);
   
   // CEX Order Type and Execution Mode for CEX-CEX arbitrage
-  const [orderType, setOrderType] = useState<"market" | "limit">("market");
+  const [orderType, setOrderType] = useState<"market" | "limit">("limit");
   const [executionMode, setExecutionMode] = useState<"parallel" | "sequential">("sequential");
 
   // Input fields loaded with signal defaults
@@ -76,6 +77,7 @@ export function DetailedSignalAnalysis({
   const prevSellRef = useRef<string>(signal.sellPrice);
   const [buyFlash, setBuyFlash] = useState<"up" | "down" | null>(null);
   const [sellFlash, setSellFlash] = useState<"up" | "down" | null>(null);
+  const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
 
   // Sync state if signal changes
   useEffect(() => {
@@ -278,40 +280,6 @@ export function DetailedSignalAnalysis({
     }
   };
 
-  const getChartPaths = () => {
-    // Elegant sinus waves simulating variations
-    const multiplier = 1 + priceDeviation * 0.12;
-    switch(selectedPeriod) {
-      case "5m":
-        return {
-          buyPath: `M 0 ${160 * multiplier} Q 80 ${130 * multiplier} 160 ${105 * multiplier} T 320 ${145 * multiplier} T 480 ${95 * multiplier} T 600 ${115 * multiplier}`,
-          sellPath: `M 0 ${178 * multiplier} Q 80 ${148 * multiplier} 160 ${123 * multiplier} T 320 ${163 * multiplier} T 480 ${113 * multiplier} T 600 ${133 * multiplier}`,
-          buyArea: `M 0 ${160 * multiplier} Q 80 ${130 * multiplier} 160 ${105 * multiplier} T 320 ${145 * multiplier} T 480 ${95 * multiplier} T 600 ${115 * multiplier} L 600 240 L 0 240 Z`,
-          sellArea: `M 0 ${178 * multiplier} Q 80 ${148 * multiplier} 160 ${123 * multiplier} T 320 ${163 * multiplier} T 480 ${113 * multiplier} T 600 ${133 * multiplier} L 600 240 L 0 240 Z`,
-          times: ["13:40", "13:45", "13:50", "13:58"]
-        };
-      case "1h":
-        return {
-          buyPath: `M 0 ${135 * multiplier} Q 120 ${75 * multiplier} 240 ${185 * multiplier} T 480 ${115 * multiplier} T 600 ${140 * multiplier}`,
-          sellPath: `M 0 ${150 * multiplier} Q 120 ${90 * multiplier} 240 ${200 * multiplier} T 480 ${130 * multiplier} T 600 ${155 * multiplier}`,
-          buyArea: `M 0 ${135 * multiplier} Q 120 ${75 * multiplier} 240 ${185 * multiplier} T 480 ${115 * multiplier} T 600 ${140 * multiplier} L 600 240 L 0 240 Z`,
-          sellArea: `M 0 ${150 * multiplier} Q 120 ${90 * multiplier} 240 ${200 * multiplier} T 480 ${130 * multiplier} T 600 ${155 * multiplier} L 600 240 L 0 240 Z`,
-          times: ["09:00", "11:00", "13:00", "13:58"]
-        };
-      case "1m":
-      default:
-        return {
-          buyPath: `M 0 ${150 * multiplier} Q 100 ${70 * multiplier} 220 ${130 * multiplier} T 440 ${80 * multiplier} T 600 ${90 * multiplier}`,
-          sellPath: `M 0 ${168 * multiplier} Q 100 ${88 * multiplier} 220 ${148 * multiplier} T 440 ${98 * multiplier} T 600 ${108 * multiplier}`,
-          buyArea: `M 0 ${150 * multiplier} Q 100 ${70 * multiplier} 220 ${130 * multiplier} T 440 ${80 * multiplier} T 600 ${90 * multiplier} L 600 240 L 0 240 Z`,
-          sellArea: `M 0 ${168 * multiplier} Q 100 ${88 * multiplier} 220 ${148 * multiplier} T 440 ${98 * multiplier} T 600 ${108 * multiplier} L 600 240 L 0 240 Z`,
-          times: ["13:55", "13:56", "13:57", "13:58"]
-        };
-    }
-  };
-
-  const chartPaths = getChartPaths();
-
   const priceYMax = (parsedSell * 1.05).toFixed(5);
   const priceYMid = ((parsedSell + parsedBuy) / 2).toFixed(5);
   const priceYMin = (parsedBuy * 0.95).toFixed(5);
@@ -322,63 +290,195 @@ export function DetailedSignalAnalysis({
   const buyY = Math.max(10, Math.min(230, 240 * (1 - (parsedBuy - yMinNum) / yRange)));
   const sellY = Math.max(10, Math.min(230, 240 * (1 - (parsedSell - yMinNum) / yRange)));
 
+  // Generate dynamic chart data points
+  const getChartDataPoints = () => {
+    const pointsCount = 60;
+    const pointsList = [];
+    const multiplier = 1 + priceDeviation * 0.12;
+    
+    // Static keys mapping to retain original periods
+    const timesMap = {
+      "1m": ["13:55", "13:56", "13:57", "13:58"],
+      "5m": ["13:40", "13:45", "13:50", "13:58"],
+      "1h": ["09:00", "11:00", "13:00", "13:58"]
+    };
+    const times = timesMap[selectedPeriod] || timesMap["1m"];
+
+    for (let i = 0; i < pointsCount; i++) {
+      const t = i / (pointsCount - 1);
+      const x = t * 600;
+      
+      let wave = 0;
+      if (selectedPeriod === "5m") {
+        wave = Math.sin(t * Math.PI * 3.5) * 0.18 + Math.cos(t * Math.PI * 1.5) * 0.08;
+      } else if (selectedPeriod === "1h") {
+        wave = Math.sin(t * Math.PI * 2.0) * 0.25 - Math.cos(t * Math.PI * 4.0) * 0.05;
+      } else { // "1m"
+        wave = Math.sin(t * Math.PI * 2.5) * 0.2 + Math.sin(t * Math.PI * 5.0) * 0.05;
+      }
+      
+      const bidVariation = wave * multiplier;
+      
+      // Compute prices scaled consistently
+      const buyPrice = parsedBuy * (1 + bidVariation * 0.012);
+      const sellPrice = parsedSell * (1 + bidVariation * 0.012);
+      const pointSpread = parsedBuy > 0 ? ((sellPrice - buyPrice) / buyPrice) * 100 : 0.44;
+
+      const buyYCoord = Math.max(10, Math.min(230, 240 * (1 - (buyPrice - yMinNum) / yRange)));
+      const sellYCoord = Math.max(10, Math.min(230, 240 * (1 - (sellPrice - yMinNum) / yRange)));
+
+      let timeStr = "";
+      try {
+        const startStr = times[0];
+        const endStr = times[times.length - 1];
+        const [startH, startM] = startStr.split(":").map(Number);
+        const [endH, endM] = endStr.split(":").map(Number);
+        
+        const startSecs = startH * 3600 + startM * 60;
+        const endSecs = endH * 3600 + endM * 60;
+        const totalSecs = endSecs - startSecs;
+        const currentSecs = startSecs + t * totalSecs;
+        
+        const h = Math.floor(currentSecs / 3600) % 24;
+        const m = Math.floor((currentSecs % 3600) / 60);
+        const s = Math.floor(currentSecs % 60);
+        
+        timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      } catch(e) {
+        timeStr = times[Math.min(times.length - 1, Math.floor(t * times.length))];
+      }
+
+      pointsList.push({
+        x,
+        buyPrice,
+        sellPrice,
+        buyY: buyYCoord,
+        sellY: sellYCoord,
+        spread: pointSpread,
+        time: timeStr
+      });
+    }
+    return { points: pointsList, times };
+  };
+
+  const { points: chartDataPoints, times: chartTimesList } = getChartDataPoints();
+
+  const chartPaths = {
+    buyPath: "M " + chartDataPoints.map(p => `${p.x.toFixed(1)} ${p.buyY.toFixed(1)}`).join(" L "),
+    sellPath: "M " + chartDataPoints.map(p => `${p.x.toFixed(1)} ${p.sellY.toFixed(1)}`).join(" L "),
+    buyArea: "M " + chartDataPoints.map(p => `${p.x.toFixed(1)} ${p.buyY.toFixed(1)}`).join(" L ") + " L 600 240 L 0 240 Z",
+    sellArea: "M " + chartDataPoints.map(p => `${p.x.toFixed(1)} ${p.sellY.toFixed(1)}`).join(" L ") + " L 600 240 L 0 240 Z",
+    times: chartTimesList
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xClient = e.clientX - rect.left;
+    const pct = xClient / rect.width;
+    const xCoord = Math.max(0, Math.min(600, pct * 600));
+    
+    // Find closest index in chartDataPoints
+    let closestIndex = 0;
+    let minDiff = Infinity;
+    for (let i = 0; i < chartDataPoints.length; i++) {
+      const diff = Math.abs(chartDataPoints[i].x - xCoord);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestIndex = i;
+      }
+    }
+    setHoveredPointIndex(closestIndex);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredPointIndex(null);
+  };
+
+  const hoveredPoint = hoveredPointIndex !== null ? chartDataPoints[hoveredPointIndex] : null;
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="absolute inset-0 z-20 bg-[#f8fafc] text-slate-800 flex flex-col lg:flex-row font-sans antialiased h-full overflow-hidden"
+      className="absolute inset-0 z-20 bg-[#f8fafc] text-slate-800 flex flex-col lg:grid lg:grid-cols-[1fr_420px] lg:grid-rows-[auto_1fr] font-sans antialiased h-full overflow-hidden"
       id="detailed-analysis-terminal"
     >
-      {/* LEFT SECTION: MAIN SYSTEM WORKSPACE (HEADER + COMPANION WORKSPACE GRAPHICS) */}
-      <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden" id="detailed-analysis-workspace-left">
-        
-        {/* 1. SOPHISTICATED LIGHT HEADER */}
-        <header className="h-16 flex-shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between shadow-xs relative z-40">
-          <div className="flex items-center gap-4">
-            <button 
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all cursor-pointer select-none active:scale-95"
-              id="back-to-signals"
-            >
-              <ArrowLeft size={14} className="stroke-[2.5]" />
-              <span>Назад к мониторингу</span>
-            </button>
-            
-            <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+      {/* 1. SOPHISTICATED LIGHT HEADER - SHARED */}
+      <header className="h-16 flex-shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between shadow-xs relative z-40 lg:col-start-1 lg:col-end-2 lg:row-start-1 lg:row-end-2">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button 
+            type="button"
+            onClick={onClose}
+            className="px-2 py-1.5 sm:px-3 sm:py-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all cursor-pointer select-none active:scale-95 whitespace-nowrap"
+            id="back-to-signals"
+          >
+            <ArrowLeft size={14} className="stroke-[2.5]" />
+            <span className="hidden xs:inline">Назад</span>
+          </button>
+          
+          <div className="h-5 w-px bg-slate-200 hidden sm:block" />
 
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] tracking-wider font-extrabold uppercase bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded text-indigo-600 font-mono">
-                {baseToken}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="text-[9px] sm:text-[10px] tracking-wider font-extrabold uppercase bg-indigo-50 border border-indigo-150 px-1.5 sm:px-2 py-0.5 rounded text-indigo-600 font-sans">
+              {baseToken}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-xs sm:text-sm md:text-base font-extrabold tracking-tight text-slate-900 font-sans leading-none">
+                {signal.pair}
+              </h1>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-150 rounded-md flex items-center gap-1 shrink-0 whitespace-nowrap">
+                <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                <span className="hidden xxs:inline">СПРЕД</span>
               </span>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 font-mono leading-none">
-                  {signal.pair}
-                </h1>
-                <span className="text-[9.5px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-150 rounded-md flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                  АКТИВНЫЙ СПРЕД
-                </span>
-              </div>
             </div>
           </div>
+        </div>
 
-          {/* Balance metrics */}
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col text-right font-mono text-[11px]">
-              <span className="text-slate-400 font-sans font-medium text-[10px] uppercase">Ваш баланс USDT</span>
-              <span className="text-emerald-600 font-extrabold text-xs sm:text-sm">{balance.toFixed(2)} USDT</span>
-            </div>
-            <div className="bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-mono text-slate-500">
-              ID: <span className="text-slate-800 font-bold">#{signal.id || "f554ba7"}</span>
-            </div>
+        {/* Mobile View Tab Switcher inside Header */}
+        <div className="lg:hidden flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 mx-1 xs:mx-2 font-sans text-xs font-bold shrink-0 shadow-3xs">
+          <button
+            type="button"
+            onClick={() => setMobileWorkspaceTab("analysis")}
+            className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              mobileWorkspaceTab === "analysis"
+                ? "bg-white text-slate-900 shadow-3xs border border-slate-150"
+                : "text-slate-400 hover:text-slate-650"
+            }`}
+          >
+            Аналитика
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileWorkspaceTab("trade")}
+            className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              mobileWorkspaceTab === "trade"
+                ? "bg-white text-slate-900 shadow-3xs border border-slate-150"
+                : "text-slate-400 hover:text-slate-650"
+            }`}
+          >
+            Торговля
+          </button>
+        </div>
+
+        {/* Balance metrics */}
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0 pr-1 sm:pr-0">
+          <div className="flex flex-col text-right font-mono leading-tight">
+            <span className="text-slate-400 font-sans font-medium text-[8px] sm:text-[9.5px] uppercase">Ваш баланс</span>
+            <span className="text-emerald-600 font-extrabold text-[11px] sm:text-sm">{balance.toFixed(2)} USDT</span>
           </div>
-        </header>
+          <div className="hidden md:block bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-mono text-slate-500">
+            ID: <span className="text-slate-800 font-bold">#{signal.id || "f554ba7"}</span>
+          </div>
+        </div>
+      </header>
 
-        {/* LEFT COMPANION: MAIN CONTENT PANEL (SCROLLABLE AREA) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 flex flex-col" id="detailed-analysis-left-scroll">
+        {/* LEFT SECTION: MAIN SYSTEM WORKSPACE (ANALYTICS CONTENT) */}
+        <div className={`flex-1 min-w-0 lg:col-start-1 lg:col-end-2 lg:row-start-2 lg:row-end-3 h-full flex flex-col overflow-hidden ${mobileWorkspaceTab === "analysis" ? "flex" : "hidden lg:flex"}`} id="detailed-analysis-workspace-left">
+          
+          {/* LEFT COMPANION: MAIN CONTENT PANEL (SCROLLABLE AREA) */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 flex flex-col" id="detailed-analysis-left-scroll">
           
           {/* TOP COMPACT SUMMARY BAR */}
           <div className="bg-white border border-slate-200/60 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs">
@@ -389,7 +489,7 @@ export function DetailedSignalAnalysis({
               <div className="text-left space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded uppercase">Режим быстрого запуска</span>
-                  <span className="text-[10px] text-slate-450 font-mono font-semibold">Средняя задержка шлюзов: ~32с</span>
+                  <span className="text-[10px] text-slate-450 font-sans font-semibold">Средняя задержка шлюзов: <span className="font-mono font-black">~32с</span></span>
                 </div>
                 <h2 className="text-sm font-extrabold text-slate-900">
                   Свободный ликвидный коридор между биржами {signal.buyDex} и {signal.sellDex}
@@ -397,8 +497,8 @@ export function DetailedSignalAnalysis({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end font-mono">
-              <span className="text-xs text-slate-400 font-sans">Симуляция рынка:</span>
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end font-sans">
+              <span className="text-xs text-slate-400">Симуляция рынка:</span>
               <button
                 type="button"
                 onClick={() => setIsSimulatingLivePrice(!isSimulatingLivePrice)}
@@ -421,9 +521,9 @@ export function DetailedSignalAnalysis({
             <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-xs space-y-4 text-left">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-mono flex items-center gap-2">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-sans flex items-center gap-2">
                     <Activity size={15} className="text-indigo-600" />
-                    График биржевых стаканов
+                    График биржевых цен
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
                     Сравнение цен лучших ордеров ask ({signal.buyDex}) и bid ({signal.sellDex})
@@ -431,7 +531,7 @@ export function DetailedSignalAnalysis({
                 </div>
 
                 {/* Duration Picker */}
-                <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 self-end sm:self-auto font-mono">
+                <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 self-end sm:self-auto font-sans">
                   {(["1m", "5m", "1h"] as const).map((pr) => (
                     <button
                       key={pr}
@@ -450,26 +550,9 @@ export function DetailedSignalAnalysis({
               </div>
 
               {/* Chart Core Area */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
-                
-                {/* Stats panel side column */}
-                <div className="hidden md:flex flex-col gap-3 justify-center pr-2 font-mono">
-                  <div className="bg-slate-50 border border-slate-200/60 p-3 rounded-xl text-left">
-                    <span className="text-[9px] text-slate-400 uppercase font-sans font-bold">Чистая Дельта спреда</span>
-                    <p className="text-sm font-extrabold text-emerald-600 mt-0.5">+${(parsedSell - parsedBuy).toFixed(5)}</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200/60 p-3 rounded-xl text-left">
-                    <span className="text-[9px] text-slate-400 uppercase font-sans font-bold">Тип ордеров / Спред</span>
-                    <p className="text-sm font-extrabold text-indigo-600 mt-0.5">{orderType === "market" ? "Market/С ходу" : "Limit / В разрез"}</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200/60 p-3 rounded-xl text-left">
-                    <span className="text-[9px] text-slate-400 uppercase font-sans font-bold">Рейтинг скорости сети</span>
-                    <p className="text-sm font-extrabold text-blue-600 mt-0.5">Ликвидная</p>
-                  </div>
-                </div>
-
+              <div className="pt-1 w-full">
                 {/* SVG Graphics inside Light Theme Grid canvas */}
-                <div className="md:col-span-3 relative h-[250px] w-full flex items-stretch bg-slate-50/50 border border-slate-200/60 rounded-2xl p-3 overflow-hidden">
+                <div className="relative h-[250px] w-full flex items-stretch bg-slate-50/50 border border-slate-200/60 rounded-2xl p-3 overflow-hidden">
                   
                   {/* Y Axis Prices Labels */}
                   <div className="w-16 flex flex-col justify-between text-right text-[9px] font-black font-mono text-slate-450 pr-2.5 border-r border-slate-200/60 py-1 flex-shrink-0 select-none">
@@ -479,7 +562,11 @@ export function DetailedSignalAnalysis({
                   </div>
 
                   {/* Canvas block overlay */}
-                  <div className="flex-1 relative pl-2.5 flex flex-col justify-between">
+                  <div 
+                    className="flex-1 relative pl-2.5 flex flex-col justify-between cursor-crosshair select-none"
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                  >
                     
                     {/* Background lines */}
                     <div className="absolute inset-0 flex flex-col justify-between pointer-events-none py-2 px-1">
@@ -523,16 +610,69 @@ export function DetailedSignalAnalysis({
                         className="transition-all duration-300"
                       />
 
-                      {/* Coordinates point dots */}
-                      <circle cx="220" cy="125" r="5" fill="#10B981" stroke="white" strokeWidth="2.5" className="shadow-xs" />
-                      <circle cx="220" cy="148" r="5" fill="#3b82f6" stroke="white" strokeWidth="2.5" className="shadow-xs" />
-                      
-                      <line x1="220" y1="5" x2="220" y2="235" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3,3" />
-
                       {/* Live Market Reference Dashed Lines */}
-                      <line x1="0" y1={buyY} x2="600" y2={buyY} stroke="#10B981" strokeWidth="1.2" strokeDasharray="3,3" opacity="0.7" />
-                      <line x1="0" y1={sellY} x2="600" y2={sellY} stroke="#3b82f6" strokeWidth="1.2" strokeDasharray="3,3" opacity="0.7" />
+                      <line x1="0" y1={buyY} x2="600" y2={buyY} stroke="#10B981" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.8" />
+                      <line x1="0" y1={sellY} x2="600" y2={sellY} stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.8" />
                     </svg>
+
+                    {/* BUY ORDER Perfectly Symmetrical HTML Marker Container */}
+                    <div 
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-white shadow-md z-20 transition-all duration-350 cursor-pointer ${
+                        isThisSignalRunning && executionStep >= 1 ? "w-[15px] h-[15px]" : "w-[11px] h-[11px]"
+                      } ${
+                        isThisSignalRunning && executionStep < 3 && executionStep >= 1 ? "animate-pulse" : ""
+                      }`}
+                      style={{
+                        left: `${(120 / 600) * 100}%`,
+                        top: `${(buyY / 240) * 100}%`,
+                        backgroundColor: isThisSignalRunning && executionStep >= 3 ? "#10B981" : isThisSignalRunning && executionStep >= 1 ? "#6366f1" : "#10B981"
+                      }}
+                      title="Ордер BUY"
+                    />
+
+                    {/* SELL ORDER Perfectly Symmetrical HTML Marker Container */}
+                    <div 
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-white shadow-md z-20 transition-all duration-350 cursor-pointer ${
+                        isThisSignalRunning && executionStep >= 5 ? "w-[15px] h-[15px]" : "w-[11px] h-[11px]"
+                      } ${
+                        isThisSignalRunning && executionStep < 7 && executionStep >= 5 ? "animate-pulse" : ""
+                      }`}
+                      style={{
+                        left: `${(360 / 600) * 100}%`,
+                        top: `${(sellY / 240) * 100}%`,
+                        backgroundColor: isThisSignalRunning && executionStep >= 7 ? "#3b82f6" : isThisSignalRunning && executionStep >= 5 ? "#6366f1" : "#3b82f6"
+                      }}
+                      title="Ордер SELL"
+                    />
+
+                    {/* Interactive Hover Coordinate Line & Symmetrical Highlight Dots */}
+                    {hoveredPoint && (
+                      <>
+                        {/* Hover vertical dotted alignment line */}
+                        <div 
+                          className="absolute top-0 bottom-0 border-l border-slate-350/90 border-dashed pointer-events-none z-15"
+                          style={{ left: `${(hoveredPoint.x / 600) * 100}%` }}
+                        />
+                        
+                        {/* Perfect Buy hover circle dot */}
+                        <div 
+                          className="absolute -translate-x-1/2 -translate-y-1/2 w-[11px] h-[11px] rounded-full bg-emerald-500 border-[2.5px] border-white shadow-md pointer-events-none z-22 scale-110"
+                          style={{
+                            left: `${(hoveredPoint.x / 600) * 100}%`,
+                            top: `${(hoveredPoint.buyY / 240) * 100}%`
+                          }}
+                        />
+
+                        {/* Perfect Sell hover circle dot */}
+                        <div 
+                          className="absolute -translate-x-1/2 -translate-y-1/2 w-[11px] h-[11px] rounded-full bg-blue-500 border-[2.5px] border-white shadow-md pointer-events-none z-22 scale-110"
+                          style={{
+                            left: `${(hoveredPoint.x / 600) * 100}%`,
+                            top: `${(hoveredPoint.sellY / 240) * 100}%`
+                          }}
+                        />
+                      </>
+                    )}
 
                     {/* Live real-time pricing tags floating on the graph */}
                     <div 
@@ -551,22 +691,78 @@ export function DetailedSignalAnalysis({
                       <span>{signal.sellDex}: ${parsedSell.toFixed(4)}</span>
                     </div>
 
+                    {/* ORDER MARKERS AND FLOATING BADGES ON GRAPH */}
+                    {/* BUY ORDER MARKER */}
+                    <div 
+                      className="absolute left-6 text-[8.5px] font-mono font-black px-2 py-0.5 rounded-md shadow-xs z-15 flex items-center gap-1 transition-all duration-300 border"
+                      style={{ 
+                        top: `${(buyY / 240) * 100}%`,
+                        transform: 'translateY(-50%)',
+                        backgroundColor: (isThisSignalRunning && executionStep >= 3) ? '#ecfdf5' : (isThisSignalRunning && executionStep >= 1) ? '#edf2ff' : '#f8fafc',
+                        color: (isThisSignalRunning && executionStep >= 3) ? '#059669' : (isThisSignalRunning && executionStep >= 1) ? '#4f46e5' : '#64748b',
+                        borderColor: (isThisSignalRunning && executionStep >= 3) ? '#a7f3d0' : (isThisSignalRunning && executionStep >= 1) ? '#c7d2fe' : '#cbd5e1'
+                      }}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        (isThisSignalRunning && executionStep >= 3) ? 'bg-emerald-500' : (isThisSignalRunning && executionStep >= 1) ? 'bg-indigo-600 animate-ping' : 'bg-slate-450'
+                      }`} />
+                      <span>
+                        {(isThisSignalRunning && executionStep >= 3) 
+                          ? "BUY ORDER FILLED" 
+                          : (isThisSignalRunning && executionStep >= 1) 
+                            ? "BUY ORDER EXECUTING..." 
+                            : "BUY ORDER LIMIT"
+                        }
+                      </span>
+                    </div>
+
+                    {/* SELL ORDER MARKER */}
+                    <div 
+                      className="absolute left-64 text-[8.5px] font-mono font-black px-2 py-0.5 rounded-md shadow-xs z-15 flex items-center gap-1 transition-all duration-300 border"
+                      style={{ 
+                        top: `${(sellY / 240) * 100}%`,
+                        transform: 'translateY(-50%)',
+                        backgroundColor: (isThisSignalRunning && executionStep >= 7) ? '#eff6ff' : (isThisSignalRunning && executionStep >= 5) ? '#edf2ff' : '#f8fafc',
+                        color: (isThisSignalRunning && executionStep >= 7) ? '#2563eb' : (isThisSignalRunning && executionStep >= 5) ? '#4f46e5' : '#64748b',
+                        borderColor: (isThisSignalRunning && executionStep >= 7) ? '#bfdbfe' : (isThisSignalRunning && executionStep >= 5) ? '#c7d2fe' : '#cbd5e1'
+                      }}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        (isThisSignalRunning && executionStep >= 7) ? 'bg-blue-500' : (isThisSignalRunning && executionStep >= 5) ? 'bg-indigo-600 animate-ping' : 'bg-slate-450'
+                      }`} />
+                      <span>
+                        {(isThisSignalRunning && executionStep >= 7) 
+                          ? "SELL ORDER FILLED" 
+                          : (isThisSignalRunning && executionStep >= 5) 
+                            ? "SELL ORDER EXECUTING..." 
+                            : "SELL ORDER LIMIT"
+                        }
+                      </span>
+                    </div>
+
                     {/* Instant hover coordinate indicator widget */}
-                    <div className="absolute top-2 left-4 bg-white/95 border border-slate-200/90 p-2.5 rounded-xl text-[9.5px] font-mono leading-tight pointer-events-none z-20 shadow-md space-y-1">
-                      <p className="text-[10px] font-black text-slate-800 uppercase tracking-wide text-left font-sans">Текущие котировки (WS)</p>
+                    <div className="absolute top-2 left-4 bg-white/95 border border-slate-200/90 p-2.5 rounded-xl text-[9.5px] font-mono leading-tight pointer-events-none z-20 shadow-md space-y-1 min-w-[200px]">
+                      <p className="text-[10px] font-black text-slate-850 uppercase tracking-wide text-left font-sans flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${hoveredPoint ? "bg-indigo-500" : "bg-emerald-500 animate-pulse"}`} />
+                        {hoveredPoint ? `В точке (${hoveredPoint.time})` : "Текущие котировки (WS)"}
+                      </p>
                       <div className="flex justify-between gap-4">
                         <span className="text-slate-500 font-sans">Покупка {signal.buyDex}:</span>
-                        <span className="text-emerald-600 font-extrabold">{parsedBuy.toFixed(5)} USDT</span>
+                        <span className="text-emerald-600 font-extrabold font-mono">
+                          {(hoveredPoint ? hoveredPoint.buyPrice : parsedBuy).toFixed(5)} USDT
+                        </span>
                       </div>
                       <div className="flex justify-between gap-4">
                         <span className="text-slate-500 font-sans">Продажа {signal.sellDex}:</span>
-                        <span className="text-blue-600 font-extrabold">{parsedSell.toFixed(5)} USDT</span>
+                        <span className="text-blue-600 font-extrabold font-mono">
+                          {(hoveredPoint ? hoveredPoint.sellPrice : parsedSell).toFixed(5)} USDT
+                        </span>
                       </div>
                       <div className="flex justify-between gap-4 border-t border-slate-100 pt-1 mt-1 font-sans font-bold text-slate-700">
-                        <span>Живой спред:</span>
-                        <span className="text-emerald-600 flex items-center gap-0.5">
+                        <span>{hoveredPoint ? "Спред в точке:" : "Живой спред:"}</span>
+                        <span className="text-emerald-600 flex items-center gap-0.5 font-mono font-extrabold">
                           <TrendingUp size={9} />
-                          +{spreadPct.toFixed(2)}%
+                          +{(hoveredPoint ? hoveredPoint.spread : spreadPct).toFixed(2)}%
                         </span>
                       </div>
                     </div>
@@ -586,7 +782,7 @@ export function DetailedSignalAnalysis({
               </div>
 
               {/* Legends list block info */}
-              <div className="pt-3 flex flex-wrap gap-4 text-xs font-mono border-t border-slate-100 text-slate-500">
+              <div className="pt-3 flex flex-wrap gap-4 text-xs font-sans border-t border-slate-100 text-slate-500">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" />
                   <span className="font-bold">Мин. цена на покупку ({signal.buyDex})</span>
@@ -603,11 +799,244 @@ export function DetailedSignalAnalysis({
 
             </div>
 
+            {/* LIVE SESSION ORDERS TERMINAL BLOCK (Open & Completed Orders with data) */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6 text-left font-sans">
+              
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div className="space-y-1">
+                  <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                    <Layers size={14} className="text-blue-600" />
+                    Торговая сессия: Размещенные ордера
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    {isThisSignalRunning 
+                      ? "Трансляция активного арбитражного цикла в реальном времени" 
+                      : "Индикаторы лимитных ордеров по текущему сигналу"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[9.5px] font-mono font-extrabold px-1.5 py-0.5 bg-slate-100 text-slate-650 border border-slate-200 rounded-md">
+                    Круг: #{isThisSignalRunning ? thisArb.id : "ОЖИДАНИЕ ЗАПУСКА"}
+                  </span>
+                  
+                  {isThisSignalRunning ? (
+                    isExecuting ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md flex items-center gap-1 animate-pulse">
+                        <RefreshCw size={10} className="animate-spin text-indigo-500" />
+                        исполняется
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-md flex items-center gap-1">
+                        <Check size={10} className="stroke-[3] text-emerald-600" />
+                        завершен
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-50 text-slate-400 border border-slate-200 rounded-md">
+                      не запущен
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Table displaying the orders in a unified, professional format */}
+              <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+                <table className="w-full text-left border-collapse font-sans text-xs min-w-[700px]">
+                  <thead>
+                    <tr className="bg-slate-50/70 border-b border-slate-100 text-[10px] text-slate-450 font-extrabold uppercase tracking-wider select-none">
+                      <th className="py-3 px-4 font-black">Направление ордера</th>
+                      <th className="py-3 px-4 font-black">Площадка</th>
+                      <th className="py-3 px-4 font-black">Торговая пара</th>
+                      <th className="py-3 px-4 font-black text-right">Цена лимита</th>
+                      <th className="py-3 px-4 font-black text-right">Размещенный объём</th>
+                      <th className="py-3 px-4 font-black text-right">Выполнение</th>
+                      <th className="py-3 px-4 font-black text-right">Итоговый результат</th>
+                      <th className="py-3 px-4 font-black text-center">Статус</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700 font-medium whitespace-nowrap">
+                    
+                    {/* ORDER #1: BUY LEG */}
+                    <tr className={`transition-all duration-300 hover:bg-slate-50/40 ${
+                      isThisSignalRunning && executionStep >= 1 && executionStep < 3 ? "bg-indigo-50/5 animate-pulse" : 
+                      isThisSignalRunning && executionStep >= 3 ? "bg-emerald-50/5" : ""
+                    }`}>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-5 h-5 rounded-full text-[9px] font-mono font-black flex items-center justify-center ${
+                            isThisSignalRunning && executionStep >= 3 ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                          }`}>
+                            B
+                          </span>
+                          <div>
+                            <span className="font-bold text-slate-800 block text-[11px]">BUY LIMIT (Закуп)</span>
+                            <span className="text-[9px] font-mono text-slate-400 block -mt-0.5">ORD-{(signal.id * 101 + 2038).toString()}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="font-extrabold text-slate-800 uppercase tracking-tight">{signal.buyDex}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="font-bold font-mono text-slate-600 bg-slate-100/70 px-1.5 py-0.5 rounded text-[10px]">{signal.pair}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-bold font-mono text-slate-800">${parsedBuy.toFixed(5)}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-bold font-mono text-slate-700">{(parsedSum || 11.72).toFixed(2)} USDT</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="inline-flex flex-col items-end">
+                          <span className={`font-extrabold font-mono text-slate-800 text-[11px] ${isThisSignalRunning && executionStep === 2 ? "text-indigo-600 animate-pulse" : ""}`}>
+                            {isThisSignalRunning && executionStep >= 3 
+                              ? "100.00%" 
+                              : isThisSignalRunning && executionStep === 2
+                                ? "43.50%"
+                                : "0.00%"
+                            }
+                          </span>
+                          <span className="text-[8.5px] text-slate-400 font-bold uppercase tracking-wider block">
+                            {isThisSignalRunning && executionStep >= 3 
+                              ? "FILLED" 
+                              : isThisSignalRunning && executionStep === 2
+                                ? "CEX FILLING..."
+                                : "QUEUED"
+                            }
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        {isThisSignalRunning && executionStep >= 3 ? (
+                          <span className="font-mono font-black text-emerald-700 bg-emerald-50 border border-emerald-100/60 px-2 py-0.5 rounded-md text-[10.5px]">
+                            +{tokensBought.toFixed(2)} {baseToken}
+                          </span>
+                        ) : (
+                          <span className="text-slate-450 font-mono text-[10px]">—</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        {isThisSignalRunning && executionStep >= 3 ? (
+                          <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded-md">Исполнен</span>
+                        ) : isThisSignalRunning && executionStep >= 1 ? (
+                          <span className="text-[9px] font-black px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md animate-pulse">Активен</span>
+                        ) : (
+                          <span className="text-[9px] font-bold px-2 py-0.5 bg-slate-50 text-slate-400 rounded-md">Ожидание</span>
+                        )}
+                      </td>
+                    </tr>
+
+                    {/* ORDER #2: SELL LEG */}
+                    <tr className={`transition-all duration-300 hover:bg-slate-50/40 ${
+                      isThisSignalRunning && executionStep >= 5 && executionStep < 7 ? "bg-indigo-50/5 animate-pulse" : 
+                      isThisSignalRunning && executionStep >= 7 ? "bg-blue-50/5" : ""
+                    }`}>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-5 h-5 rounded-full text-[9px] font-mono font-black flex items-center justify-center ${
+                            isThisSignalRunning && executionStep >= 7 ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"
+                          }`}>
+                            S
+                          </span>
+                          <div>
+                            <span className="font-bold text-slate-800 block text-[11px]">SELL LIMIT (Продажа)</span>
+                            <span className="text-[9px] font-mono text-slate-400 block -mt-0.5">ORD-{(signal.id * 101 + 2039).toString()}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="font-extrabold text-slate-800 uppercase tracking-tight">{signal.sellDex}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="font-bold font-mono text-slate-600 bg-slate-100/70 px-1.5 py-0.5 rounded text-[10px]">{signal.pair}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-bold font-mono text-slate-800">${parsedSell.toFixed(5)}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="font-bold font-mono text-slate-700">
+                          {isThisSignalRunning && executionStep >= 5 ? `${tokensBought.toFixed(2)} ${baseToken}` : `— ${baseToken}`}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="inline-flex flex-col items-end">
+                          <span className={`font-extrabold font-mono text-slate-800 text-[11px] ${isThisSignalRunning && executionStep === 6 ? "text-indigo-600 animate-pulse" : ""}`}>
+                            {isThisSignalRunning && executionStep >= 7 
+                              ? "100.00%" 
+                              : isThisSignalRunning && executionStep === 6
+                                ? "72.10%"
+                                : "0.00%"
+                            }
+                          </span>
+                          <span className="text-[8.5px] text-slate-400 font-bold uppercase tracking-wider block">
+                            {isThisSignalRunning && executionStep >= 7 
+                              ? "FILLED" 
+                              : isThisSignalRunning && executionStep === 6
+                                ? "CEX FILLING..."
+                                : "QUEUED"
+                            }
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        {isThisSignalRunning && executionStep >= 7 ? (
+                          <span className="font-mono font-black text-blue-700 bg-blue-50 border border-blue-100/60 px-2 py-0.5 rounded-md text-[10.5px]">
+                            +{grossReturn.toFixed(2)} USDT
+                          </span>
+                        ) : (
+                          <span className="text-slate-450 font-mono text-[10px]">—</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        {isThisSignalRunning && executionStep >= 7 ? (
+                          <span className="text-[9px] font-black px-2 py-0.5 bg-blue-50 text-blue-800 rounded-md">Исполнен</span>
+                        ) : isThisSignalRunning && executionStep >= 5 ? (
+                          <span className="text-[9px] font-black px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md animate-pulse">Активен</span>
+                        ) : (
+                          <span className="text-[9px] font-bold px-2 py-0.5 bg-slate-50 text-slate-400 rounded-md">Ожидание</span>
+                        )}
+                      </td>
+                    </tr>
+
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Network fee & Net Profit footer panel inside Big Terminal view */}
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="text-[11px] text-slate-450 space-y-0.5 leading-tight font-sans text-left">
+                  <div>Сеть перевода: <strong className="text-slate-800 font-mono">{signal.network}</strong> · Сбор сети: <strong className="text-slate-800 font-mono">{networkFee.toFixed(4)} USDT</strong></div>
+                  <div>Торговые комиссии CEX (за закупку и продажу ордеров): <strong className="text-slate-800 font-mono">{(takerBuy + takerSell).toFixed(4)} USDT</strong> ({0.2}%)</div>
+                </div>
+
+                <div className="flex items-center gap-1.5 self-stretch justify-between sm:justify-end">
+                  <span className="text-xs text-slate-500 font-bold">Чистый профит сделки:</span>
+                  <strong className={`font-mono text-sm font-black px-2.5 py-1 rounded-lg border transition-all ${
+                    isThisSignalRunning && executionStep >= 7 
+                      ? "text-emerald-700 bg-emerald-50/50 border-emerald-200" 
+                      : isThisSignalRunning
+                        ? "text-indigo-600 bg-indigo-50/50 border-indigo-200 animate-pulse"
+                        : "text-slate-500 bg-white border-slate-200/50"
+                  }`}>
+                    {isThisSignalRunning && executionStep >= 7 
+                      ? `+${netProfit.toFixed(4)} USDT` 
+                      : isThisSignalRunning 
+                        ? "Исполняется..." 
+                        : `+${(0.53).toFixed(4)} USDT (оценка)`
+                    }
+                  </strong>
+                </div>
+              </div>
+
+            </div>
+
             {/* Side-by-Side Live Exchange Order Books depth grids */}
             <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-mono flex items-center gap-2">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-sans flex items-center gap-2">
                     <Layers size={15} className="text-emerald-600" />
                     Глубина лимитных стаканов
                   </h3>
@@ -615,8 +1044,8 @@ export function DetailedSignalAnalysis({
                     Доступные ордера для мгновенного встречного сведения ордеров без перекоса спреда
                   </p>
                 </div>
-                <div className="bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg text-[10px] font-mono text-slate-500">
-                  Базовый объём: <span className="text-indigo-600 font-bold">10,000 USDT</span>
+                <div className="bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg text-[10px] font-sans text-slate-500">
+                  Базовый объём: <span className="text-indigo-600 font-bold font-mono">10,000 USDT</span>
                 </div>
               </div>
 
@@ -628,14 +1057,14 @@ export function DetailedSignalAnalysis({
                 {/* Left CEX ASKs depth stacks (Sell orders on buy-CEX platform) */}
                 <div className="space-y-3 z-10 text-left">
                   <div className="flex justify-between items-center bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl">
-                    <span className="text-xs font-mono font-bold text-rose-700 flex items-center gap-2">
+                    <span className="text-xs font-sans font-bold text-rose-700 flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                       {signal.buyDex} • ASKS (Продажа)
                     </span>
-                    <span className="text-[9px] font-extrabold text-rose-500 uppercase bg-white border border-rose-200 px-1.5 rounded font-mono">Лучшая цена</span>
+                    <span className="text-[9px] font-extrabold text-rose-500 uppercase bg-white border border-rose-200 px-1.5 rounded font-sans">Лучшая цена</span>
                   </div>
 
-                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-100 font-mono">
+                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-100 font-sans">
                     <span>Цена (USDT)</span>
                     <span className="text-right">Объём ({baseToken})</span>
                     <span className="text-right">Сумма (USDT)</span>
@@ -674,14 +1103,14 @@ export function DetailedSignalAnalysis({
                 {/* Right CEX BIDs depth stacks (Buy orders on sell-CEX platform) */}
                 <div className="space-y-3 z-10 text-left">
                   <div className="flex justify-between items-center bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl">
-                    <span className="text-xs font-mono font-bold text-emerald-700 flex items-center gap-2">
+                    <span className="text-xs font-sans font-bold text-emerald-700 flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                       {signal.sellDex} • BIDS (Покупка)
                     </span>
-                    <span className="text-[9px] font-extrabold text-emerald-600 uppercase bg-white border border-emerald-200 px-1.5 rounded font-mono">Лучшая цена</span>
+                    <span className="text-[9px] font-extrabold text-emerald-600 uppercase bg-white border border-emerald-200 px-1.5 rounded font-sans">Лучшая цена</span>
                   </div>
 
-                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-100 font-mono">
+                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-100 font-sans">
                     <span>Цена (USDT)</span>
                     <span className="text-right">Объём ({baseToken})</span>
                     <span className="text-right">Сумма (USDT)</span>
@@ -724,40 +1153,40 @@ export function DetailedSignalAnalysis({
             <div className="bg-white border border-slate-200/60 rounded-3xl p-5 text-left shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-100 pb-3">
                 <div>
-                  <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                  <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-sans flex items-center gap-1.5">
                     <ShieldCheck size={16} className="text-emerald-600" />
-                    Мультикритериальный Смарт-Аудит
+                    Проверка условий сделки
                   </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Результаты автоматических фоновых проверок параметров сделки</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Результаты автоматической проверки параметров и доступности арбитража</p>
                 </div>
 
                 <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
                   <button 
                     type="button" 
                     onClick={() => setActiveCheckTab("all")}
-                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg font-mono transition-all ${
-                      activeCheckTab === "all" ? "bg-white text-slate-800 shadow-xs border border-slate-200" : "text-slate-450 hover:text-slate-650"
+                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg font-sans transition-all cursor-pointer focus:outline-none outline-none select-none ${
+                      activeCheckTab === "all" ? "bg-white text-slate-800 shadow-xs border border-slate-200" : "text-slate-450 hover:text-slate-650 border border-transparent"
                     }`}
                   >
-                    Все тесты (4)
+                    Все (4)
                   </button>
                   <button 
                     type="button" 
                     onClick={() => setActiveCheckTab("security")}
-                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg font-mono transition-all ${
-                      activeCheckTab === "security" ? "bg-white text-slate-800 shadow-xs border border-slate-200" : "text-slate-450 hover:text-slate-650"
+                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg font-sans transition-all cursor-pointer focus:outline-none outline-none select-none ${
+                      activeCheckTab === "security" ? "bg-white text-slate-800 shadow-xs border border-slate-200" : "text-slate-450 hover:text-slate-650 border border-transparent"
                     }`}
                   >
-                    Безопасность (2)
+                    Доступность (2)
                   </button>
                   <button 
                     type="button" 
                     onClick={() => setActiveCheckTab("liquidity")}
-                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg font-mono transition-all ${
-                      activeCheckTab === "liquidity" ? "bg-white text-slate-800 shadow-xs border border-slate-200" : "text-slate-450 hover:text-slate-650"
+                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg font-sans transition-all cursor-pointer focus:outline-none outline-none select-none ${
+                      activeCheckTab === "liquidity" ? "bg-white text-slate-800 shadow-xs border border-slate-200" : "text-slate-450 hover:text-slate-650 border border-transparent"
                     }`}
                   >
-                    Резервы (2)
+                    Объёмы и Лимиты (2)
                   </button>
                 </div>
               </div>
@@ -768,14 +1197,14 @@ export function DetailedSignalAnalysis({
                 {(activeCheckTab === "all" || activeCheckTab === "security") && (
                   <div className="bg-slate-50/50 border border-slate-200/60 p-3.5 rounded-2xl space-y-1">
                     <div className="flex items-center gap-2 justify-between">
-                      <span className="font-mono font-extrabold text-slate-900 flex items-center gap-1.5 uppercase text-[10.5px]">
+                      <span className="font-sans font-extrabold text-slate-900 flex items-center gap-1.5 uppercase text-[10.5px]">
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                        Высокоскоростной API-шлюз (Low-Latency API Connection)
+                        Актуальность цен
                       </span>
-                      <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 rounded uppercase font-bold font-mono">АКТИВНА</span>
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 rounded uppercase font-bold font-sans">ОК</span>
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                      Сигналы и ордера передаются через высокоскоростные выделенные API-коннекторы к биржам. Риск проскальзывания лимитных заявок сведен к минимуму.
+                      Цены на покупку и продажу актуальны и обновляются в реальном времени. Нет зависших торговых стаканов.
                     </p>
                   </div>
                 )}
@@ -784,14 +1213,14 @@ export function DetailedSignalAnalysis({
                 {(activeCheckTab === "all" || activeCheckTab === "security") && (
                   <div className="bg-slate-50/50 border border-slate-200/60 p-3.5 rounded-2xl space-y-1">
                     <div className="flex items-center gap-2 justify-between">
-                      <span className="font-mono font-extrabold text-slate-900 flex items-center gap-1.5 uppercase text-[10.5px]">
+                      <span className="font-sans font-extrabold text-slate-900 flex items-center gap-1.5 uppercase text-[10.5px]">
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                        Шифрование API Ключей (AES-256 Security)
+                        Сеть для перевода
                       </span>
-                      <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 rounded uppercase font-bold font-mono">ПРОЙДЕН</span>
+                      <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 rounded uppercase font-bold font-sans">АКТИВНА</span>
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                      Торговые ключи CEX-интеграций зашифрованы по стандарту AES-256. Права на вывод средств отключены в настройках биржевых аккаунтов.
+                      Выбранная сеть <strong className="font-black text-slate-700 font-mono uppercase">{signal.network}</strong> активна на прием и вывод средств на обеих биржах.
                     </p>
                   </div>
                 )}
@@ -800,14 +1229,14 @@ export function DetailedSignalAnalysis({
                 {(activeCheckTab === "all" || activeCheckTab === "liquidity") && (
                   <div className="bg-slate-50/50 border border-slate-200/60 p-3.5 rounded-2xl space-y-1">
                     <div className="flex items-center gap-2 justify-between">
-                      <span className="font-mono font-extrabold text-slate-900 flex items-center gap-1.5 uppercase text-[10.5px]">
+                      <span className="font-sans font-extrabold text-slate-900 flex items-center gap-1.5 uppercase text-[10.5px]">
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                        Минимальные лимиты CEX
+                        Минимальные лимиты бирж
                       </span>
-                      <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 rounded uppercase font-bold font-mono">OK</span>
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 rounded uppercase font-bold font-sans">ОК</span>
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                      Введённый объём USDT полностью превосходит минимальные лимиты на биржевые депозиты и лимиты ордеров на обеих CEX.
+                      Сумма сделки и доступный баланс соответствуют минимально допустимым лимитам на ордера и выводы.
                     </p>
                   </div>
                 )}
@@ -816,14 +1245,14 @@ export function DetailedSignalAnalysis({
                 {(activeCheckTab === "all" || activeCheckTab === "liquidity") && (
                   <div className="bg-slate-50/50 border border-slate-200/60 p-3.5 rounded-2xl space-y-1">
                     <div className="flex items-center gap-2 justify-between">
-                      <span className="font-mono font-extrabold text-slate-900 flex items-center gap-1.5 uppercase text-[10.5px]">
+                      <span className="font-sans font-extrabold text-slate-900 flex items-center gap-1.5 uppercase text-[10.5px]">
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                        Плотность CEX стаканов
+                        Ликвидность направления
                       </span>
-                      <span className="text-[9px] bg-cyan-50 text-cyan-700 border border-cyan-200 px-1.5 rounded uppercase font-bold font-mono">ДОСТАТОЧНА</span>
+                      <span className="text-[9px] bg-cyan-50 text-cyan-700 border border-cyan-200 px-1.5 rounded uppercase font-bold font-sans">ДОСТАТОЧНА</span>
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                      Глубина встречных ордеров в торговом коридоре 0.5% на CEX позволяет свести инвестиционный объём без негативного влияния на спред.
+                      Объёма встречных ордеров в биржевых стаканах достаточно для проведения сделки по указанным ценам.
                     </p>
                   </div>
                 )}
@@ -836,7 +1265,7 @@ export function DetailedSignalAnalysis({
       </div> {/* Close LEFT SECTION: MAIN SYSTEM WORKSPACE (detailed-analysis-workspace-left) */}
 
       {/* RIGHT COMPANION: PINNED FAST LAUNCH SIDEBAR - FULL SCREEN HEIGHT */}
-      <div className="w-full lg:w-[420px] h-full shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col text-left relative overflow-hidden" id="detailed-analysis-right-sidebar">
+      <div className={`w-full lg:w-[420px] flex-1 lg:h-full lg:shrink-0 lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-end-3 border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col text-left relative overflow-hidden ${mobileWorkspaceTab === "trade" ? "flex" : "hidden lg:flex"}`} id="detailed-analysis-right-sidebar">
         
         {/* TABS CONTROLLER CONTAINER (PINNED AND STATIC HEIGHT) */}
         <div className="flex-shrink-0 px-5 pt-4 border-b border-slate-100 flex items-center justify-between bg-white relative z-10 text-xs font-bold font-sans">
@@ -864,7 +1293,7 @@ export function DetailedSignalAnalysis({
               Справочник
             </button>
           </div>
-          <span className="text-[9px] text-emerald-600 font-extrabold bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded uppercase font-mono shrink-0 mb-2">
+          <span className="text-[9px] text-emerald-600 font-extrabold bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded uppercase font-sans shrink-0 mb-2">
             99.8% Safe
           </span>
         </div>
@@ -938,7 +1367,7 @@ export function DetailedSignalAnalysis({
                       <div className="space-y-1">
                         <div className="flex justify-between items-center px-1">
                           <label className="text-[10.5px] font-bold text-slate-500 font-sans block">Покупка ({signal.buyDex})</label>
-                          <span className="text-[9.5px] font-extrabold text-slate-400 font-mono">Тек: {parsedBuy.toFixed(4)}</span>
+                          <span className="text-[9.5px] font-bold text-slate-400 font-sans">Тек: <span className="font-mono font-extrabold">{parsedBuy.toFixed(4)}</span></span>
                         </div>
                         <div className="relative flex items-center">
                           <button 
@@ -975,7 +1404,7 @@ export function DetailedSignalAnalysis({
                       <div className="space-y-1">
                         <div className="flex justify-between items-center px-1">
                           <label className="text-[10.5px] font-bold text-slate-500 font-sans block">Продажа ({signal.sellDex})</label>
-                          <span className="text-[9.5px] font-extrabold text-slate-400 font-mono">Тек: {parsedSell.toFixed(4)}</span>
+                          <span className="text-[9.5px] font-bold text-slate-400 font-sans">Тек: <span className="font-mono font-extrabold">{parsedSell.toFixed(4)}</span></span>
                         </div>
                         <div className="relative flex items-center">
                           <button 
@@ -1016,8 +1445,8 @@ export function DetailedSignalAnalysis({
                   <div className="space-y-2 pt-1 text-left">
                     <div className="flex justify-between items-center text-[10.5px] font-bold font-sans">
                       <span className="text-slate-500">Сумма арбитражного ордера</span>
-                      <span className="text-slate-400 font-mono">
-                        Доступно: <span className="font-extrabold text-slate-855">{balance.toFixed(2)} USDT</span>
+                      <span className="text-slate-400 font-sans font-semibold">
+                        Доступно: <span className="font-extrabold font-mono text-slate-855">{balance.toFixed(2)} USDT</span>
                       </span>
                     </div>
                     <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-3 focus-within:border-indigo-400 transition-all">
@@ -1027,14 +1456,14 @@ export function DetailedSignalAnalysis({
                           disabled={isExecuting}
                           value={sumInput}
                           onChange={(e) => setSumInput(e.target.value)}
-                          className="bg-transparent border-0 p-0 text-lg font-black text-slate-850 focus:ring-0 focus:outline-none w-[60%] font-mono"
+                          className="bg-transparent border-0 p-0 text-lg font-black text-slate-855 focus:ring-0 focus:outline-none w-[60%] font-mono"
                           placeholder="Сумма"
                         />
-                        <div className="flex flex-col items-end flex-shrink-0 font-mono">
-                          <span className="text-xs font-extrabold text-slate-800">{quoteToken}</span>
+                        <div className="flex flex-col items-end flex-shrink-0 font-sans">
+                          <span className="text-xs font-extrabold text-slate-800 font-mono">{quoteToken}</span>
                           {parsedSum > 0 && (
-                            <span className="text-[9px] font-bold text-rose-500 mt-0.5">
-                              ком. -{totalTakerFees.toFixed(3)}
+                            <span className="text-[9px] font-semibold text-rose-500 mt-0.5">
+                              ком. <span className="font-mono font-bold">-{totalTakerFees.toFixed(3)}</span>
                             </span>
                           )}
                         </div>
@@ -1057,37 +1486,29 @@ export function DetailedSignalAnalysis({
                     </div>
                   </div>
 
-                  {/* CEX order config selectors row */}
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    {/* Order Type */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-455 block">Тип ордеров на CEX</span>
-                      <div className="relative flex items-center">
-                        <select
-                          disabled={isExecuting}
-                          value={orderType}
-                          onChange={(e) => setOrderType(e.target.value as any)}
-                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-800 focus:outline-none cursor-pointer"
-                        >
-                          <option value="market">Market (Мгновенно)</option>
-                          <option value="limit">Limit (Лимит-ордер)</option>
-                        </select>
+                  {/* 7. Detailed Spec Params table (ПАРАМЕТРЫ) */}
+                  <div className="space-y-1.5 pt-2 text-left">
+                    <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Параметры</span>
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-[10.5px] text-left">
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
+                        <span className="font-semibold text-slate-500 font-sans">Ликвидность</span>
+                        <span className="font-bold text-emerald-500 uppercase font-sans">Высокая</span>
                       </div>
-                    </div>
-
-                    {/* Execution Mode */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-455 block">Режим исполнения</span>
-                      <div className="relative flex items-center">
-                        <select
-                          disabled={isExecuting}
-                          value={executionMode}
-                          onChange={(e) => setExecutionMode(e.target.value as any)}
-                          className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold font-mono text-slate-855 focus:outline-none cursor-pointer"
-                        >
-                          <option value="sequential">Последовательно (Safe)</option>
-                          <option value="parallel">Параллельно (Fast)</option>
-                        </select>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-sans">
+                        <span className="font-semibold text-slate-500">Signal ID</span>
+                        <span className="font-bold text-slate-800 font-mono">#{signal.id || "f554ba7"}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-sans">
+                        <span className="font-semibold text-slate-500">Сеть</span>
+                        <span className="font-bold text-slate-800 uppercase font-mono">{signal.network}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-sans">
+                        <span className="font-semibold text-slate-500">Мин. вывод</span>
+                        <span className="font-bold text-slate-800">5 <span className="font-mono font-bold">{baseToken}</span></span>
+                      </div>
+                      <div className="flex justify-between items-center font-sans">
+                        <span className="font-semibold text-slate-500">Комиссия сети</span>
+                        <span className="font-bold text-slate-800 font-mono">${networkFee.toFixed(4)}</span>
                       </div>
                     </div>
                   </div>
@@ -1095,7 +1516,7 @@ export function DetailedSignalAnalysis({
                   {/* 6. Route Diagram Map Panel */}
                   <div className="space-y-1.5 text-left">
                     <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Маршрут</span>
-                    <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 space-y-2 font-mono text-[10.5px]">
+                    <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 space-y-2 font-sans text-[10.5px]">
                       <div className="flex justify-between items-center text-slate-400 font-sans text-[9px] uppercase font-bold mb-1">
                         <span>Транзитный Маршрут</span>
                         <span>Сеть перевода: {signal.network}</span>
@@ -1123,6 +1544,26 @@ export function DetailedSignalAnalysis({
                     </div>
                   </div>
 
+                  {/* CEX order config parameters info block */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200/60 rounded-2xl space-y-2.5 text-left">
+                    <span className="text-[10px] font-black text-slate-455 uppercase tracking-wider block">Режим исполнения сделок</span>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      <div className="px-2.5 py-1.5 bg-white border border-slate-200/60 rounded-lg text-[10px] font-bold font-sans text-slate-700 inline-flex items-center gap-1.5 shadow-5xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                        Ордер: <span className="font-mono font-black">Limit</span> (Лимитный)
+                      </div>
+                      <div className="px-2.5 py-1.5 bg-white border border-slate-200/60 rounded-lg text-[10px] font-bold font-sans text-slate-700 inline-flex items-center gap-1.5 shadow-5xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+                        Порядок: Последовательно
+                      </div>
+                    </div>
+
+                    <p className="text-[10.5px] text-slate-500 leading-relaxed font-sans font-medium">
+                      Для предотвращения ошибок исполнения на CEX биржах система автоматически выставляет безопасные <strong className="font-extrabold text-slate-700">лимитные ордера</strong> по целевой цене и проводит сделки строго <strong className="font-extrabold text-slate-700">последовательно</strong> (по очереди).
+                    </p>
+                  </div>
+
                   {/* Important notice block below route */}
                   <div className="p-3 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-2 text-[10px] text-amber-800 leading-relaxed font-sans text-left">
                     <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
@@ -1132,90 +1573,169 @@ export function DetailedSignalAnalysis({
                     </p>
                   </div>
 
-                  {/* 7. Detailed Spec Params table (ПАРАМЕТРЫ) */}
-                  <div className="space-y-1.5 pt-2 text-left">
-                    <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-1 block">Параметры</span>
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-[10.5px] text-left">
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
-                        <span className="font-semibold text-slate-500 font-sans">Ликвидность</span>
-                        <span className="font-bold text-emerald-500 uppercase font-sans">Высокая</span>
-                      </div>
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
-                        <span className="font-semibold text-slate-500 font-sans">Signal ID</span>
-                        <span className="font-bold text-slate-800">#{signal.id || "f554ba7"}</span>
-                      </div>
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
-                        <span className="font-semibold text-slate-500 font-sans">Сеть</span>
-                        <span className="font-bold text-slate-800 uppercase font-mono">{signal.network}</span>
-                      </div>
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/50 font-mono">
-                        <span className="font-semibold text-slate-500 font-sans">Мин. вывод</span>
-                        <span className="font-bold text-slate-800 font-sans">5 {baseToken}</span>
-                      </div>
-                      <div className="flex justify-between items-center font-mono">
-                        <span className="font-semibold text-slate-500 font-sans">Комиссия сети</span>
-                        <span className="font-bold text-slate-800 font-sans">${networkFee.toFixed(4)}</span>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* 8. Spec flow layout: ЧТО ПРОИЗОЙДЕТ */}
-                  <div className="space-y-2 pt-2 text-left">
+                  <div className="space-y-2 pt-2 text-left animate-fade-in">
                     <div className="flex justify-between items-center px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       <span>Что произойдет</span>
                       <span className="font-mono text-[9px] lowercase">~78с</span>
                     </div>
 
                     {/* Vertically chained sequence */}
-                    <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-3.5 relative overflow-hidden text-left">
+                    <div className="border border-slate-200 rounded-2xl p-4 bg-white space-y-4 relative overflow-hidden text-left">
                       
                       {/* Top Balance Banner */}
-                      <div className="flex items-center gap-2 pb-2.5 border-b border-slate-200/50 text-emerald-600 font-sans text-[11px] font-extrabold">
-                        <Check size={13} className="stroke-[3] text-emerald-500" />
-                        <span>Баланс подтверждён · {balance.toFixed(2)} USDT</span>
+                      <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 text-emerald-600 font-sans text-[11px] font-extrabold justify-between">
+                        <div className="flex items-center gap-2">
+                          <Check size={13} className="stroke-[3] text-emerald-500" />
+                          <span>Баланс подтверждён</span>
+                        </div>
+                        <span className="font-mono bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px]">
+                          {balance.toFixed(2)} USDT
+                        </span>
                       </div>
 
                       {/* Step-by-Step rendering */}
                       {(() => {
-                        const steps = [
-                          { id: 1, text: `Выставление ордера на покупку (${signal.buyDex})` },
-                          { id: 2, text: `Исполнение ордера на покупку (${signal.buyDex})` },
-                          { id: 3, text: `Перевод токена по сети ${signal.network}` },
-                          { id: 4, text: `Зачисление токенов на ${signal.sellDex}` },
-                          { id: 5, text: `Выставление ордера на продажу (${signal.sellDex})` },
-                          { id: 6, text: `Исполнение ордера на продажу (${signal.sellDex})` }
+                        const stepsDef = [
+                          { 
+                            id: 1, 
+                            title: `Выставление ордера купить на ${signal.buyDex}`,
+                            getDesc: (active: boolean, completed: boolean) => {
+                              if (completed) return `Успешно выставлен лимитный ордер на сумму ${parsedSum.toFixed(2)} USDT`;
+                              if (active) return `Формирование и отправка ордера на сумму ${parsedSum.toFixed(2)} USDT...`;
+                              return `Будет выделено ${parsedSum.toFixed(2)} USDT`;
+                            },
+                            getStatusText: (active: boolean, completed: boolean) => {
+                              if (completed) return "Создан";
+                              if (active) return "В процессе...";
+                              return "Ожидание";
+                            }
+                          },
+                          { 
+                            id: 2, 
+                            title: `Исполнение BUY ордера (закуп ${baseToken})`,
+                            getDesc: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 3) return `Куплено ${tokensBought.toFixed(2)} ${baseToken} по курсу $${parsedBuy.toFixed(5)}`;
+                              if (active) return `Поиск ликвидных встречных заявок по цене $${parsedBuy.toFixed(5)}...`;
+                              return `Целевой курс закупа: $${parsedBuy.toFixed(5)}`;
+                            },
+                            getStatusText: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 3) return "Выполнен";
+                              if (active) return "Подбор стакана...";
+                              return "Ожидание";
+                            }
+                          },
+                          { 
+                            id: 3, 
+                            title: `Трансфер токена по сети ${signal.network}`,
+                            getDesc: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 4) return `Переслано ${tokensBought.toFixed(2)} ${baseToken}. Сбор сети: $${networkFee.toFixed(4)}`;
+                              if (active) return `Инициализация транзакции в сети ${signal.network}. Ожидание подписи гейта...`;
+                              return `Комиссия перевода: $${networkFee.toFixed(4)}`;
+                            },
+                            getStatusText: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 4) return "Отправлен";
+                              if (active) return "В мемпуле...";
+                              return "Ожидание";
+                            }
+                          },
+                          { 
+                            id: 4, 
+                            title: `Зачисление токенов на ${signal.sellDex}`,
+                            getDesc: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 5) return `Зачислено на баланс ${tokensBought.toFixed(2)} ${baseToken} (подтверждено)`;
+                              if (active) return `Ожидание 1 блокчейн-подтверждения в сети ${signal.network}...`;
+                              return `Будет зачислено на баланс`;
+                            },
+                            getStatusText: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 5) return "Подтвержден";
+                              if (active) return "Сканирование...";
+                              return "Ожидание";
+                            }
+                          },
+                          { 
+                            id: 5, 
+                            title: `Выставление ордера продать на ${signal.sellDex}`,
+                            getDesc: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 6) return `Успешно выставлен лимитный ордер по цене $${parsedSell.toFixed(5)}`;
+                              if (active) return `Запуск встречного ордера по цене $${parsedSell.toFixed(5)}...`;
+                              return `Целевой курс продажи: $${parsedSell.toFixed(5)}`;
+                            },
+                            getStatusText: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 6) return "Выставлен";
+                              if (active) return "Публикация...";
+                              return "Ожидание";
+                            }
+                          },
+                          { 
+                            id: 6, 
+                            title: `Исполнение ордера SELL и фиксирование профита`,
+                            getDesc: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 7) return `Закрыто. Выручка: ${grossReturn.toFixed(2)} USDT, Нетто-профит: +${netProfit.toFixed(4)} USDT`;
+                              if (active) return `Исполнение ордера в стакане ${signal.sellDex}...`;
+                              return `Ожидаемый чистый профит: +${netProfit.toFixed(4)} USDT`;
+                            },
+                            getStatusText: (active: boolean, completed: boolean) => {
+                              if (completed || executionStep >= 7) return "Исполнен";
+                              if (active) return "Исполнение...";
+                              return "Ожидание";
+                            }
+                          }
                         ];
 
-                        return steps.map((st) => {
+                        return stepsDef.map((st) => {
                           const isCompleted = executionStep > st.id || (!isExecuting && executionStep === 7);
                           const isActive = isExecuting && executionStep === st.id;
 
                           return (
-                            <div key={st.id} className="flex items-center gap-3 relative z-10">
+                            <div key={st.id} className="flex gap-3 relative z-10 text-[11px] leading-tight select-none">
                               {/* Icon Indicator */}
-                              {isCompleted ? (
-                                <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-4xs font-black text-xs">
-                                  ✓
-                                </div>
-                              ) : isActive ? (
-                                <div className="relative w-5 h-5 flex items-center justify-center flex-shrink-0">
-                                  <div className="absolute inset-0 rounded-full border-2 border-indigo-100" />
-                                  <div className="absolute inset-0 rounded-full border-2 border-t-indigo-500 border-r-indigo-500 animate-spin" />
-                                </div>
-                              ) : (
-                                <div className="w-5 h-5 rounded-full border-2 border-slate-100 bg-slate-50/60 flex-shrink-0" />
-                              )}
+                              <div className="pt-0.5 flex-shrink-0">
+                                {isCompleted ? (
+                                  <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-4xs font-black text-[10px]">
+                                    ✓
+                                  </div>
+                                ) : isActive ? (
+                                  <div className="relative w-5 h-5 flex items-center justify-center">
+                                    <div className="absolute inset-0 rounded-full border-2 border-indigo-100" />
+                                    <div className="absolute inset-0 rounded-full border-2 border-t-indigo-500 border-r-indigo-500 animate-spin" />
+                                  </div>
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center text-[9px] font-bold text-slate-400">
+                                    {st.id}
+                                  </div>
+                                )}
+                              </div>
 
-                              {/* Text label */}
-                              <span className={`text-[11px] transition-all duration-200 ${
-                                isActive 
-                                  ? "text-slate-900 font-extrabold" 
-                                  : isCompleted 
-                                    ? "text-slate-800 font-medium" 
-                                    : "text-slate-350 font-semibold"
-                              }`}>
-                                {st.text}
-                              </span>
+                              {/* Details text structure */}
+                              <div className="flex-1 flex flex-col space-y-0.5 text-left font-sans">
+                                <div className="flex justify-between items-baseline gap-2">
+                                  <span className={`text-[11px] transition-all duration-200 ${
+                                    isActive 
+                                      ? "text-indigo-600 font-extrabold" 
+                                      : isCompleted 
+                                        ? "text-slate-800 font-bold" 
+                                        : "text-slate-400 font-semibold"
+                                  }`}>
+                                    {st.title}
+                                  </span>
+                                  
+                                  <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-extrabold uppercase shrink-0 ${
+                                    isCompleted 
+                                      ? "bg-emerald-50 text-emerald-700" 
+                                      : isActive 
+                                        ? "bg-indigo-50 text-indigo-700 animate-pulse" 
+                                        : "bg-slate-50 text-slate-400"
+                                  }`}>
+                                    {st.getStatusText(isActive, isCompleted)}
+                                  </span>
+                                </div>
+                                <span className={`text-[9.5px] transition-all duration-200 font-medium ${
+                                  isActive ? "text-indigo-500 animate-pulse" : "text-slate-450 font-medium"
+                                }`}>
+                                  {st.getDesc(isActive, isCompleted)}
+                                </span>
+                              </div>
                             </div>
                           );
                         });
@@ -1223,79 +1743,16 @@ export function DetailedSignalAnalysis({
 
                     </div>
                   </div>
-
-                  {/* AUTOMATED COMPLIANCE CONFIRMATION BOX */}
-                  <div className="bg-slate-50 border border-slate-200/60 p-3 rounded-2xl text-left">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        disabled={isExecuting}
-                        checked={confirmed}
-                        onChange={(e) => setConfirmed(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-650 focus:ring-indigo-400 cursor-pointer"
-                      />
-                      <span className="text-[10px] leading-relaxed font-bold text-slate-500 font-sans select-none">
-                        Я подтверждаю автоматическое сведение ордеров и несу полную ответственность за риски.
-                        <span className="font-black text-slate-900 block mt-1 uppercase">Согласие подтверждено</span>
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* STICKY LAUNCH BUTTON */}
-                  {isThisSignalRunning && !isExecuting && executionStep === 7 ? (
-                    <div className="space-y-2">
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-xl space-y-0.5 text-center font-sans">
-                        <span className="text-[10px] uppercase font-black block text-emerald-700">Ордер Завершен</span>
-                        <p className="text-sm font-extrabold font-mono">
-                          Итого зачислено: <span className="text-emerald-600">+{netProfit.toFixed(4)} USDT</span>
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={onClose}
-                        className="w-full py-3.5 bg-slate-900 border border-slate-950 hover:bg-slate-800 text-white rounded-xl font-black text-xs tracking-wider uppercase shadow-md active:scale-95 transition-all text-center cursor-pointer select-none"
-                      >
-                        Вернуться к сигналам
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={isExecuting || !confirmed}
-                      onClick={handleExecuteArbitrage}
-                      className={`w-full py-4 rounded-xl font-black text-xs tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 active:scale-[0.98] select-none ${
-                        isExecuting 
-                          ? "bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-100 cursor-pointer animate-pulse" 
-                          : confirmed
-                            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 cursor-pointer"
-                            : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                      }`}
-                    >
-                      {isExecuting ? (
-                        <>
-                          <RefreshCw size={13} className="animate-spin" />
-                          Идёт выполнение арбитража...
-                        </>
-                      ) : (
-                        <>
-                          <Play size={10} className="fill-white" />
-                          Запустить автоматический арбитраж
-                        </>
-                      )}
-                    </button>
-                  )}
-
-                  {/* BUTTON ACTION ENDS HERE */}
                 </>
               ) : (
                 /* FAQ/Справочное руководство tab content */
                 <div className="space-y-4 text-left animate-fade-in" id="sidebar-faq-tab-view">
-                  <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase font-mono block">
+                  <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase font-sans block">
                     Базовые Вопросы и Ответы
                   </span>
 
                   <div className="space-y-3 font-sans text-xs">
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 space-y-1.5">
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 space-y-1.5 font-sans">
                       <h5 className="font-bold text-slate-800 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
                         Как обеспечивается безрисковость?
@@ -1305,7 +1762,7 @@ export function DetailedSignalAnalysis({
                       </p>
                     </div>
 
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 space-y-1.5">
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 space-y-1.5 font-sans">
                       <h5 className="font-bold text-slate-800 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
                         С какой суммы можно начать круг?
@@ -1315,7 +1772,7 @@ export function DetailedSignalAnalysis({
                       </p>
                     </div>
 
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 space-y-1.5">
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 space-y-1.5 font-sans">
                       <h5 className="font-bold text-slate-800 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
                         Как учитываются комиссии бирж?
@@ -1325,7 +1782,7 @@ export function DetailedSignalAnalysis({
                       </p>
                     </div>
 
-                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 space-y-1.5">
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/50 space-y-1.5 font-sans">
                       <h5 className="font-bold text-slate-800 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
                         Безопасно ли передавать API ключи?
@@ -1339,6 +1796,74 @@ export function DetailedSignalAnalysis({
               )}
 
           </div> {/* Close dynamic scrollable body (detailed-analysis-right-sidebar-scroll) */}
+
+          {/* PINNED LAUNCH & COMPLIANCE FOOTER (always static, pinned to bottom) */}
+          {sidebarTab === "trade" && (
+            <div className="flex-shrink-0 p-4 border-t border-slate-200 bg-white space-y-3 relative z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+              {/* 1. COMPLIANCE CONFIRMATION BOX - only visible BEFORE launch */}
+              {!isThisSignalRunning && (
+                <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-2xl text-left">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      disabled={isExecuting}
+                      checked={confirmed}
+                      onChange={(e) => setConfirmed(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-650 focus:ring-indigo-400 cursor-pointer"
+                    />
+                    <span className="text-[10.5px] leading-relaxed font-bold text-slate-550 font-sans select-none">
+                      Я подтверждаю автоматическое сведение ордеров и несу полную ответственность за риски.
+                      <span className="font-black text-indigo-600 block mt-1 uppercase text-[9px] tracking-wider">Согласие подтверждено</span>
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {/* 2. LAUNCH / EXECUTION / ACTION BUTTON */}
+              {isThisSignalRunning && !isExecuting && executionStep === 7 ? (
+                <div className="space-y-2">
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-xl space-y-0.5 text-center font-sans">
+                    <span className="text-[10px] uppercase font-black block text-emerald-700">Ордер Завершен</span>
+                    <p className="text-sm font-bold font-sans">
+                      Итого зачислено: <span className="text-emerald-600 font-mono font-extrabold">+{netProfit.toFixed(4)} USDT</span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-3 bg-slate-900 border border-slate-950 hover:bg-slate-800 text-white rounded-xl font-black text-xs tracking-wider uppercase shadow-md active:scale-95 transition-all text-center cursor-pointer select-none"
+                  >
+                    Вернуться к сигналам
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isExecuting || !confirmed}
+                  onClick={handleExecuteArbitrage}
+                  className={`w-full py-3.5 rounded-xl font-black text-xs tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 active:scale-[0.98] select-none ${
+                    isExecuting 
+                      ? "bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-100 cursor-pointer animate-pulse" 
+                      : confirmed
+                        ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 cursor-pointer"
+                        : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+                  }`}
+                >
+                  {isExecuting ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      Идёт выполнение арбитража...
+                    </>
+                  ) : (
+                    <>
+                      <Play size={10} className="fill-white" />
+                      Запустить автоматический арбитраж
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
         </div> {/* Close right sidebar wrapper (detailed-analysis-right-sidebar) */}
     </motion.div>
   );
