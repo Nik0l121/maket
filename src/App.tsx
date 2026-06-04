@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   User, 
   Shield, 
@@ -7,7 +7,8 @@ import {
   Zap, 
   Bell, 
   Wallet, 
-  HelpCircle
+  HelpCircle,
+  History
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React from "react";
@@ -23,6 +24,7 @@ import { ApiKeyPage } from "./pages/ApiKeyPage";
 import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { NotificationsPage, initialNotifications } from "./pages/NotificationsPage";
 import { BalancePage } from "./pages/BalancePage";
+import { HistoryPage } from "./pages/HistoryPage";
 import { FaqPage } from "./pages/FaqPage";
 import { AuthPage } from "./pages/AuthPage";
 import { NotificationItem } from "./types";
@@ -31,6 +33,26 @@ import { useToast } from "./components/Toast";
 export default function App() {
   const { showToast } = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark" | any>(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") {
+      document.documentElement.classList.add("dark");
+      return "dark";
+    }
+    document.documentElement.classList.remove("dark");
+    return "light";
+  });
+
+  const handleThemeChange = (newTheme: "light" | "dark") => {
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
+
   const [username, setUsername] = useState("Admin");
   const [email, setEmail] = useState("gavrfil@gmail.com");
   const [phone, setPhone] = useState("+79053440725");
@@ -39,6 +61,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeHeaderNav, setActiveHeaderNav] = useState("Сканер");
   const [isScannerRunning, setIsScannerRunning] = useState(false);
+  const [scannerSubView, setScannerSubView] = useState<"scanner" | "history">("scanner");
   const [selectedSignal, setSelectedSignal] = useState<any>(null);
   const [detailedSignal, setDetailedSignal] = useState<any>(null);
 
@@ -58,6 +81,16 @@ export default function App() {
   const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [loadingText, setLoadingText] = useState("");
 
+  // Sync animation on mount
+  useEffect(() => {
+    setLoadingText("Инициализация криптографического туннеля...");
+    setIsLoadingPage(true);
+    const timer = setTimeout(() => {
+      setIsLoadingPage(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
   const getLoadingMessage = (tabName: string) => {
     switch (tabName) {
       case "Сканер":
@@ -70,6 +103,8 @@ export default function App() {
         return "Расшифровка API-конфигураций...";
       case "Подписка":
         return "Сверка подписки с контрактами...";
+      case "История":
+        return "Загрузка детальной истории кругов...";
       case "Уведомления":
         return "Загрузка журнала сигналов...";
       case "Баланс":
@@ -91,21 +126,23 @@ export default function App() {
 
 
   const handleActiveTabChange = (name: string) => {
-    setLoadingText(getLoadingMessage(name));
+    const targetTab = name === "Сигналы" ? "Сканер" : name;
+    setLoadingText(getLoadingMessage(targetTab));
     setIsLoadingPage(true);
 
     setTimeout(() => {
-      setActiveTab(name);
+      setActiveTab(targetTab);
       setDetailedSignal(null);
-      if (name === "Сканер") {
-        setActiveHeaderNav("Сканер");
-      } else if (["Профиль", "Безопасность", "API-ключи", "Подписка"].includes(name)) {
+      if (targetTab === "Сканер") {
+        setScannerSubView("scanner");
+        setActiveHeaderNav("Сигналы");
+      } else if (["Профиль", "Безопасность", "API-ключи", "Подписка"].includes(targetTab)) {
         setActiveHeaderNav("Аккаунт");
-      } else if (name === "Уведомления") {
+      } else if (targetTab === "Уведомления") {
         setActiveHeaderNav("Уведомления");
-      } else if (name === "Баланс") {
+      } else if (targetTab === "Баланс") {
         setActiveHeaderNav("Баланс");
-      } else if (name === "FAQ") {
+      } else if (targetTab === "FAQ") {
         setActiveHeaderNav("FAQ");
       }
 
@@ -139,7 +176,7 @@ export default function App() {
   };
 
   const navItems = [
-    { name: "Сканер", icon: <Zap size={20} /> },
+    { name: "Сигналы", icon: <Zap size={20} /> },
     { name: "Профиль", icon: <User size={20} /> },
     { name: "Безопасность", icon: <Shield size={20} /> },
     { name: "API-ключи", icon: <Key size={20} /> },
@@ -147,7 +184,7 @@ export default function App() {
   ];
 
   const headerNav = [
-    { name: "Сканер", icon: <Zap size={18} /> },
+    { name: "Сигналы", icon: <Zap size={18} /> },
     { name: "Аккаунт", icon: <User size={18} /> },
     { name: "Уведомления", icon: <Bell size={18} /> },
     { name: "Баланс", icon: <Wallet size={18} /> },
@@ -167,7 +204,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#F9FAFB] font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#F9FAFB] dark:bg-slate-950 font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden transition-colors duration-200">
       {/* Background Pattern */}
       <div className="fixed inset-0 z-0 opacity-[0.02] pointer-events-none" 
            style={{ backgroundImage: 'radial-gradient(#1e40af 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} />
@@ -176,7 +213,7 @@ export default function App() {
         headerNav={headerNav}
         activeHeaderNav={activeHeaderNav}
         setActiveHeaderNav={(name) => {
-          if (name === "Сканер") handleActiveTabChange("Сканер");
+          if (name === "Сигналы" || name === "Сканер") handleActiveTabChange("Сканер");
           if (name === "Аккаунт") handleActiveTabChange("Профиль");
           if (name === "Уведомления") handleActiveTabChange("Уведомления");
           if (name === "Баланс") handleActiveTabChange("Баланс");
@@ -190,6 +227,10 @@ export default function App() {
           setIsLoggedIn(false);
           showToast("Вы успешно вышли из учетной записи", "info");
         }}
+        theme={theme}
+        onChangeTheme={handleThemeChange}
+        notifications={notifications}
+        setNotifications={setNotifications}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -216,6 +257,8 @@ export default function App() {
             isScannerTab={activeTab === "Сканер"}
             isScannerRunning={isScannerRunning}
             setIsScannerRunning={setIsScannerRunning}
+            scannerSubView={scannerSubView}
+            setScannerSubView={setScannerSubView}
             notifications={notifications}
             activeGroupFilter={activeGroupFilter}
             setActiveGroupFilter={setActiveGroupFilter}
@@ -262,21 +305,55 @@ export default function App() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#F9FAFB]/90 backdrop-blur-xs min-h-[400px]"
+                  className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#F9FAFB]/90 dark:bg-[#070c17]/90 backdrop-blur-xs min-h-[400px]"
                 >
                   <div className="flex flex-col items-center space-y-5">
-                    {/* Pulsating dual-orbit loading animation */}
-                    <div className="relative w-14 h-14">
-                      <div className="absolute inset-0 rounded-full border border-slate-200/60" />
-                      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 border-r-blue-500 animate-spin" />
-                      <div className="absolute inset-2 rounded-full border-2 border-transparent border-b-blue-300 border-l-blue-300 rotate-180 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }} />
+                    {/* Pulsating dual-orbit loading animation using SVG */}
+                    <div className="relative w-14 h-14 flex items-center justify-center">
+                      {/* Outer track */}
+                      <svg className="absolute w-14 h-14" viewBox="0 0 50 50">
+                        <circle
+                          cx="25"
+                          cy="25"
+                          r="22"
+                          fill="none"
+                          strokeWidth="2.5"
+                          className="stroke-slate-200 dark:stroke-slate-800/80"
+                        />
+                      </svg>
+                      {/* Outer spinning arc */}
+                      <svg className="absolute w-14 h-14 animate-spin" viewBox="0 0 50 50">
+                        <circle
+                          cx="25"
+                          cy="25"
+                          r="22"
+                          fill="none"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          className="stroke-blue-500 dark:stroke-blue-400"
+                          strokeDasharray="40 100"
+                        />
+                      </svg>
+                      {/* Inner reverse-spinning arc */}
+                      <svg className="absolute w-10 h-10 animate-spin" viewBox="0 0 50 50" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }}>
+                        <circle
+                          cx="25"
+                          cy="25"
+                          r="22"
+                          fill="none"
+                          strokeWidth="4.5"
+                          strokeLinecap="round"
+                          className="stroke-blue-400 dark:stroke-blue-500"
+                          strokeDasharray="30 100"
+                        />
+                      </svg>
                     </div>
 
                     <div className="space-y-1.5 text-center">
-                      <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                      <h3 className="text-[9px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest leading-none">
                         ПОДКЛЮЧЕНИЕ К СЕТИ
                       </h3>
-                      <p className="text-xs font-bold text-slate-700 tracking-tight">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tracking-tight font-sans">
                         {loadingText || "Синхронизация данных..."}
                       </p>
                     </div>
@@ -303,6 +380,7 @@ export default function App() {
                     isScannerRunning={isScannerRunning} 
                     setIsScannerRunning={setIsScannerRunning} 
                     runningArbitrages={runningArbitrages}
+                    scannerSubView={scannerSubView}
                   />
                 )
               ) : activeTab === "Безопасность" ? (
@@ -368,7 +446,7 @@ export default function App() {
             <button
               key={nav.name}
               onClick={() => {
-                if (nav.name === "Сканер") handleActiveTabChange("Сканер");
+                if (nav.name === "Сигналы" || nav.name === "Сканер") handleActiveTabChange("Сканер");
                 if (nav.name === "Аккаунт") handleActiveTabChange("Профиль");
                 if (nav.name === "Уведомления") handleActiveTabChange("Уведомления");
                 if (nav.name === "Баланс") handleActiveTabChange("Баланс");

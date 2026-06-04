@@ -42,7 +42,7 @@ export function DetailedSignalAnalysis({
   key?: React.Key;
 }) {
   const { showToast } = useToast();
-  const [selectedPeriod, setSelectedPeriod] = useState<"1m" | "5m" | "1h">("1m");
+  const [selectedPeriod, setSelectedPeriod] = useState<"1m" | "5m" | "15m" | "30m" | "1h">("1m");
   const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<"analysis" | "trade">("analysis");
   
   // Interactive Live simulation flags
@@ -64,6 +64,9 @@ export function DetailedSignalAnalysis({
 
   // Verification lists active tabs
   const [activeCheckTab, setActiveCheckTab] = useState<"all" | "security" | "liquidity">("all");
+
+  // Limit Order Book Depth Mode ("minimal" - 3 levels, "detailed" - 7 levels)
+  const [orderBookDepthMode, setOrderBookDepthMode] = useState<"minimal" | "detailed">("minimal");
 
   // Tab for sidebar Panel: "trade" for quick launch, "faq" for help/reference guide
   const [sidebarTab, setSidebarTab] = useState<"trade" | "faq">("trade");
@@ -298,9 +301,11 @@ export function DetailedSignalAnalysis({
     
     // Static keys mapping to retain original periods
     const timesMap = {
-      "1m": ["13:55", "13:56", "13:57", "13:58"],
-      "5m": ["13:40", "13:45", "13:50", "13:58"],
-      "1h": ["09:00", "11:00", "13:00", "13:58"]
+      "1m": ["13:57", "13:58", "13:58", "13:58"],
+      "5m": ["13:53", "13:55", "13:57", "13:58"],
+      "15m": ["13:43", "13:48", "13:53", "13:58"],
+      "30m": ["13:28", "13:38", "13:48", "13:58"],
+      "1h": ["13:00", "13:20", "13:40", "13:58"]
     };
     const times = timesMap[selectedPeriod] || timesMap["1m"];
 
@@ -311,6 +316,10 @@ export function DetailedSignalAnalysis({
       let wave = 0;
       if (selectedPeriod === "5m") {
         wave = Math.sin(t * Math.PI * 3.5) * 0.18 + Math.cos(t * Math.PI * 1.5) * 0.08;
+      } else if (selectedPeriod === "15m") {
+        wave = Math.sin(t * Math.PI * 2.8) * 0.21 - Math.cos(t * Math.PI * 2.2) * 0.06;
+      } else if (selectedPeriod === "30m") {
+        wave = Math.sin(t * Math.PI * 2.4) * 0.23 + Math.sin(t * Math.PI * 3.5) * 0.04;
       } else if (selectedPeriod === "1h") {
         wave = Math.sin(t * Math.PI * 2.0) * 0.25 - Math.cos(t * Math.PI * 4.0) * 0.05;
       } else { // "1m"
@@ -396,6 +405,50 @@ export function DetailedSignalAnalysis({
 
   const hoveredPoint = hoveredPointIndex !== null ? chartDataPoints[hoveredPointIndex] : null;
 
+  // Compute order book volumes dynamically based on trade parameters
+  const bidsVolumeVal = tokensBought > 0 ? tokensBought : 4400;
+  const bidsSumVal = tokensBought > 0 ? grossReturn : (parsedSell * 4400);
+  const asksVolumeVal = tokensBought > 0 ? tokensBought : 3650;
+  const asksSumVal = tokensBought > 0 ? parsedSum : (parsedBuy * 3650);
+
+  const formattedBidsVolume = bidsVolumeVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const formattedBidsSum = bidsSumVal.toLocaleString('en-US', { maximumFractionDigits: 1 });
+  const formattedAsksVolume = asksVolumeVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const formattedAsksSum = asksSumVal.toLocaleString('en-US', { maximumFractionDigits: 1 });
+
+  // Compute levels based on selected depth mode
+  const bidLevels = orderBookDepthMode === "minimal" 
+    ? [
+        { price: parsedSell, volume: bidsVolumeVal, sum: bidsSumVal, isMyOrder: true, bgWidth: "90%" },
+        { price: parsedSell * 0.9994, volume: 1960, sum: parsedSell * 0.9994 * 1960, isMyOrder: false, bgWidth: "55%" },
+        { price: parsedSell * 0.9988, volume: 2250, sum: parsedSell * 0.9988 * 2250, isMyOrder: false, bgWidth: "25%" }
+      ]
+    : [
+        { price: parsedSell, volume: bidsVolumeVal, sum: bidsSumVal, isMyOrder: true, bgWidth: "90%" },
+        { price: parsedSell * 0.9994, volume: 1960, sum: parsedSell * 0.9994 * 1960, isMyOrder: false, bgWidth: "55%" },
+        { price: parsedSell * 0.9988, volume: 2250, sum: parsedSell * 0.9988 * 2250, isMyOrder: false, bgWidth: "25%" },
+        { price: parsedSell * 0.9982, volume: 3910, sum: parsedSell * 0.9982 * 3910, isMyOrder: false, bgWidth: "70%" },
+        { price: parsedSell * 0.9976, volume: 1730, sum: parsedSell * 0.9976 * 1730, isMyOrder: false, bgWidth: "45%" },
+        { price: parsedSell * 0.9970, volume: 4140, sum: parsedSell * 0.9970 * 4140, isMyOrder: false, bgWidth: "15%" },
+        { price: parsedSell * 0.9964, volume: 2580, sum: parsedSell * 0.9964 * 2580, isMyOrder: false, bgWidth: "35%" }
+      ];
+
+  const askLevels = orderBookDepthMode === "minimal" 
+    ? [
+        { price: parsedBuy * 1.0012, volume: 1820, sum: parsedBuy * 1.0012 * 1820, isMyOrder: false, bgWidth: "35%" },
+        { price: parsedBuy * 1.0006, volume: 2150, sum: parsedBuy * 1.0006 * 2150, isMyOrder: false, bgWidth: "60%" },
+        { price: parsedBuy, volume: asksVolumeVal, sum: asksSumVal, isMyOrder: true, bgWidth: "85%" }
+      ]
+    : [
+        { price: parsedBuy * 1.0036, volume: 2840, sum: parsedBuy * 1.0036 * 2840, isMyOrder: false, bgWidth: "75%" },
+        { price: parsedBuy * 1.0030, volume: 1490, sum: parsedBuy * 1.0030 * 1490, isMyOrder: false, bgWidth: "50%" },
+        { price: parsedBuy * 1.0024, volume: 3120, sum: parsedBuy * 1.0024 * 3120, isMyOrder: false, bgWidth: "15%" },
+        { price: parsedBuy * 1.0018, volume: 2650, sum: parsedBuy * 1.0018 * 2650, isMyOrder: false, bgWidth: "40%" },
+        { price: parsedBuy * 1.0012, volume: 1820, sum: parsedBuy * 1.0012 * 1820, isMyOrder: false, bgWidth: "35%" },
+        { price: parsedBuy * 1.0006, volume: 2150, sum: parsedBuy * 1.0006 * 2150, isMyOrder: false, bgWidth: "60%" },
+        { price: parsedBuy, volume: asksVolumeVal, sum: asksSumVal, isMyOrder: true, bgWidth: "85%" }
+      ];
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -424,13 +477,14 @@ export function DetailedSignalAnalysis({
             <span className="text-[9px] sm:text-[10px] tracking-wider font-extrabold uppercase bg-indigo-50 border border-indigo-150 px-1.5 sm:px-2 py-0.5 rounded text-indigo-600 font-sans">
               {baseToken}
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <h1 className="text-xs sm:text-sm md:text-base font-extrabold tracking-tight text-slate-900 font-sans leading-none">
                 {signal.pair}
               </h1>
-              <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-150 rounded-md flex items-center gap-1 shrink-0 whitespace-nowrap">
-                <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                <span className="hidden xxs:inline">СПРЕД</span>
+              {/* Pulsing green live websocket status dot with no container */}
+              <span className="relative flex h-2 w-2 select-none shrink-0" title="Пул WebSocket подключен">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
             </div>
           </div>
@@ -480,39 +534,6 @@ export function DetailedSignalAnalysis({
           {/* LEFT COMPANION: MAIN CONTENT PANEL (SCROLLABLE AREA) */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 flex flex-col" id="detailed-analysis-left-scroll">
           
-          {/* TOP COMPACT SUMMARY BAR */}
-          <div className="bg-white border border-slate-200/60 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-                <Cpu size={20} className="animate-pulse" />
-              </div>
-              <div className="text-left space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded uppercase">Режим быстрого запуска</span>
-                  <span className="text-[10px] text-slate-450 font-sans font-semibold">Средняя задержка шлюзов: <span className="font-mono font-black">~32с</span></span>
-                </div>
-                <h2 className="text-sm font-extrabold text-slate-900">
-                  Свободный ликвидный коридор между биржами {signal.buyDex} и {signal.sellDex}
-                </h2>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end font-sans">
-              <span className="text-xs text-slate-400">Симуляция рынка:</span>
-              <button
-                type="button"
-                onClick={() => setIsSimulatingLivePrice(!isSimulatingLivePrice)}
-                className={`px-3 py-1.5 text-[10px] font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isSimulatingLivePrice 
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xs" 
-                    : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-850"
-                }`}
-              >
-                <RefreshCw size={11} className={isSimulatingLivePrice ? "animate-spin" : ""} />
-                <span>{isSimulatingLivePrice ? "АКТИВНА" : "ПАУЗА"}</span>
-              </button>
-            </div>
-          </div>
 
           {/* LEFT INTERACTIVE WORKSPACE CARD MONITOR */}
           <div className="space-y-6">
@@ -524,6 +545,10 @@ export function DetailedSignalAnalysis({
                   <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-sans flex items-center gap-2">
                     <Activity size={15} className="text-indigo-600" />
                     График биржевых цен
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100/60 text-[8.5px] font-bold tracking-normal uppercase h-4 ml-1.5 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      WS LIVE
+                    </span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
                     Сравнение цен лучших ордеров ask ({signal.buyDex}) и bid ({signal.sellDex})
@@ -532,7 +557,7 @@ export function DetailedSignalAnalysis({
 
                 {/* Duration Picker */}
                 <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 self-end sm:self-auto font-sans">
-                  {(["1m", "5m", "1h"] as const).map((pr) => (
+                  {(["1m", "5m", "15m", "30m", "1h"] as const).map((pr) => (
                     <button
                       key={pr}
                       type="button"
@@ -543,7 +568,7 @@ export function DetailedSignalAnalysis({
                           : "text-slate-400 hover:text-slate-650"
                       }`}
                     >
-                      {pr === "1m" ? "1м" : pr === "5m" ? "5м" : "1ч"}
+                      {pr === "1m" ? "1м" : pr === "5m" ? "5м" : pr === "15m" ? "15м" : pr === "30m" ? "30м" : "1ч"}
                     </button>
                   ))}
                 </div>
@@ -694,17 +719,20 @@ export function DetailedSignalAnalysis({
                     {/* ORDER MARKERS AND FLOATING BADGES ON GRAPH */}
                     {/* BUY ORDER MARKER */}
                     <div 
-                      className="absolute left-6 text-[8.5px] font-mono font-black px-2 py-0.5 rounded-md shadow-xs z-15 flex items-center gap-1 transition-all duration-300 border"
+                      className={`absolute left-6 text-[8.5px] font-mono font-black px-2 py-0.5 rounded-md shadow-xs z-15 flex items-center gap-1 transition-all duration-300 border ${
+                        (isThisSignalRunning && executionStep >= 3)
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/60"
+                          : (isThisSignalRunning && executionStep >= 1)
+                            ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/60"
+                            : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-450 border-slate-200 dark:border-slate-700/60"
+                      }`}
                       style={{ 
                         top: `${(buyY / 240) * 100}%`,
                         transform: 'translateY(-50%)',
-                        backgroundColor: (isThisSignalRunning && executionStep >= 3) ? '#ecfdf5' : (isThisSignalRunning && executionStep >= 1) ? '#edf2ff' : '#f8fafc',
-                        color: (isThisSignalRunning && executionStep >= 3) ? '#059669' : (isThisSignalRunning && executionStep >= 1) ? '#4f46e5' : '#64748b',
-                        borderColor: (isThisSignalRunning && executionStep >= 3) ? '#a7f3d0' : (isThisSignalRunning && executionStep >= 1) ? '#c7d2fe' : '#cbd5e1'
                       }}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${
-                        (isThisSignalRunning && executionStep >= 3) ? 'bg-emerald-500' : (isThisSignalRunning && executionStep >= 1) ? 'bg-indigo-600 animate-ping' : 'bg-slate-450'
+                        (isThisSignalRunning && executionStep >= 3) ? 'bg-emerald-500' : (isThisSignalRunning && executionStep >= 1) ? 'bg-indigo-600 animate-ping' : 'bg-slate-450 dark:bg-slate-500'
                       }`} />
                       <span>
                         {(isThisSignalRunning && executionStep >= 3) 
@@ -718,17 +746,20 @@ export function DetailedSignalAnalysis({
 
                     {/* SELL ORDER MARKER */}
                     <div 
-                      className="absolute left-64 text-[8.5px] font-mono font-black px-2 py-0.5 rounded-md shadow-xs z-15 flex items-center gap-1 transition-all duration-300 border"
+                      className={`absolute left-64 text-[8.5px] font-mono font-black px-2 py-0.5 rounded-md shadow-xs z-15 flex items-center gap-1 transition-all duration-300 border ${
+                        (isThisSignalRunning && executionStep >= 7)
+                          ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/60"
+                          : (isThisSignalRunning && executionStep >= 5)
+                            ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/60"
+                            : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-450 border-slate-200 dark:border-slate-700/60"
+                      }`}
                       style={{ 
                         top: `${(sellY / 240) * 100}%`,
                         transform: 'translateY(-50%)',
-                        backgroundColor: (isThisSignalRunning && executionStep >= 7) ? '#eff6ff' : (isThisSignalRunning && executionStep >= 5) ? '#edf2ff' : '#f8fafc',
-                        color: (isThisSignalRunning && executionStep >= 7) ? '#2563eb' : (isThisSignalRunning && executionStep >= 5) ? '#4f46e5' : '#64748b',
-                        borderColor: (isThisSignalRunning && executionStep >= 7) ? '#bfdbfe' : (isThisSignalRunning && executionStep >= 5) ? '#c7d2fe' : '#cbd5e1'
                       }}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${
-                        (isThisSignalRunning && executionStep >= 7) ? 'bg-blue-500' : (isThisSignalRunning && executionStep >= 5) ? 'bg-indigo-600 animate-ping' : 'bg-slate-450'
+                        (isThisSignalRunning && executionStep >= 7) ? 'bg-blue-500' : (isThisSignalRunning && executionStep >= 5) ? 'bg-indigo-600 animate-ping' : 'bg-slate-450 dark:bg-slate-500'
                       }`} />
                       <span>
                         {(isThisSignalRunning && executionStep >= 7) 
@@ -740,28 +771,27 @@ export function DetailedSignalAnalysis({
                       </span>
                     </div>
 
-                    {/* Instant hover coordinate indicator widget */}
-                    <div className="absolute top-2 left-4 bg-white/95 border border-slate-200/90 p-2.5 rounded-xl text-[9.5px] font-mono leading-tight pointer-events-none z-20 shadow-md space-y-1 min-w-[200px]">
-                      <p className="text-[10px] font-black text-slate-850 uppercase tracking-wide text-left font-sans flex items-center gap-1.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${hoveredPoint ? "bg-indigo-500" : "bg-emerald-500 animate-pulse"}`} />
-                        {hoveredPoint ? `В точке (${hoveredPoint.time})` : "Текущие котировки (WS)"}
-                      </p>
-                      <div className="flex justify-between gap-4">
-                        <span className="text-slate-500 font-sans">Покупка {signal.buyDex}:</span>
-                        <span className="text-emerald-600 font-extrabold font-mono">
-                          {(hoveredPoint ? hoveredPoint.buyPrice : parsedBuy).toFixed(5)} USDT
+                    {/* Dynamic hover coordinate indicators without background container card */}
+                    <div className="absolute top-2 left-4 pointer-events-none z-20 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[10px] text-slate-500 font-sans select-none bg-transparent">
+                      <div className="flex items-center gap-1 font-extrabold text-slate-900 tracking-wide uppercase text-[9.5px]">
+                        {hoveredPoint ? `В точке (${hoveredPoint.time}):` : "Котировки (WS):"}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-400">Покупка {signal.buyDex}:</span>
+                        <span className="text-emerald-600 font-black font-mono">
+                          {(hoveredPoint ? hoveredPoint.buyPrice : parsedBuy).toFixed(5)}
                         </span>
                       </div>
-                      <div className="flex justify-between gap-4">
-                        <span className="text-slate-500 font-sans">Продажа {signal.sellDex}:</span>
-                        <span className="text-blue-600 font-extrabold font-mono">
-                          {(hoveredPoint ? hoveredPoint.sellPrice : parsedSell).toFixed(5)} USDT
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-400">Продажа {signal.sellDex}:</span>
+                        <span className="text-blue-600 font-black font-mono">
+                          {(hoveredPoint ? hoveredPoint.sellPrice : parsedSell).toFixed(5)}
                         </span>
                       </div>
-                      <div className="flex justify-between gap-4 border-t border-slate-100 pt-1 mt-1 font-sans font-bold text-slate-700">
-                        <span>{hoveredPoint ? "Спред в точке:" : "Живой спред:"}</span>
-                        <span className="text-emerald-600 flex items-center gap-0.5 font-mono font-extrabold">
-                          <TrendingUp size={9} />
+                      <div className="flex items-center gap-1 border-l border-slate-250 pl-3 font-bold text-slate-700">
+                        <span>{hoveredPoint ? "Спред:" : "Живой спред:"}</span>
+                        <span className="text-emerald-600 font-mono font-extrabold flex items-center gap-0.5">
+                          <TrendingUp size={10} />
                           +{(hoveredPoint ? hoveredPoint.spread : spreadPct).toFixed(2)}%
                         </span>
                       </div>
@@ -785,11 +815,11 @@ export function DetailedSignalAnalysis({
               <div className="pt-3 flex flex-wrap gap-4 text-xs font-sans border-t border-slate-100 text-slate-500">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" />
-                  <span className="font-bold">Мин. цена на покупку ({signal.buyDex})</span>
+                  <span className="font-bold">Цена покупки ({signal.buyDex})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded bg-blue-500 inline-block" />
-                  <span className="font-bold">Макс. цена на продажу ({signal.sellDex})</span>
+                  <span className="font-bold">Цена продажи ({signal.sellDex})</span>
                 </div>
                 <div className="sm:ml-auto text-[10.5px] text-slate-400 flex items-center gap-1.5 font-sans font-medium">
                   <Info size={13} className="text-slate-400" />
@@ -961,26 +991,6 @@ export function DetailedSignalAnalysis({
                         </span>
                       </td>
                       <td className="py-4 px-4 text-right">
-                        <div className="inline-flex flex-col items-end">
-                          <span className={`font-extrabold font-mono text-slate-800 text-[11px] ${isThisSignalRunning && executionStep === 6 ? "text-indigo-600 animate-pulse" : ""}`}>
-                            {isThisSignalRunning && executionStep >= 7 
-                              ? "100.00%" 
-                              : isThisSignalRunning && executionStep === 6
-                                ? "72.10%"
-                                : "0.00%"
-                            }
-                          </span>
-                          <span className="text-[8.5px] text-slate-400 font-bold uppercase tracking-wider block">
-                            {isThisSignalRunning && executionStep >= 7 
-                              ? "FILLED" 
-                              : isThisSignalRunning && executionStep === 6
-                                ? "CEX FILLING..."
-                                : "QUEUED"
-                            }
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-right">
                         {isThisSignalRunning && executionStep >= 7 ? (
                           <span className="font-mono font-black text-blue-700 bg-blue-50 border border-blue-100/60 px-2 py-0.5 rounded-md text-[10.5px]">
                             +{grossReturn.toFixed(2)} USDT
@@ -1008,7 +1018,7 @@ export function DetailedSignalAnalysis({
               <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="text-[11px] text-slate-450 space-y-0.5 leading-tight font-sans text-left">
                   <div>Сеть перевода: <strong className="text-slate-800 font-mono">{signal.network}</strong> · Сбор сети: <strong className="text-slate-800 font-mono">{networkFee.toFixed(4)} USDT</strong></div>
-                  <div>Торговые комиссии CEX (за закупку и продажу ордеров): <strong className="text-slate-800 font-mono">{(takerBuy + takerSell).toFixed(4)} USDT</strong> ({0.2}%)</div>
+                  <div>Торговые комиссии CEX (за закупку и продажу): <strong className="text-slate-800 font-mono">{(takerBuy + takerSell).toFixed(4)} USDT</strong> ({0.2}%)</div>
                 </div>
 
                 <div className="flex items-center gap-1.5 self-stretch justify-between sm:justify-end">
@@ -1034,7 +1044,7 @@ export function DetailedSignalAnalysis({
 
             {/* Side-by-Side Live Exchange Order Books depth grids */}
             <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-sans flex items-center gap-2">
                     <Layers size={15} className="text-emerald-600" />
@@ -1044,8 +1054,27 @@ export function DetailedSignalAnalysis({
                     Доступные ордера для мгновенного встречного сведения ордеров без перекоса спреда
                   </p>
                 </div>
-                <div className="bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg text-[10px] font-sans text-slate-500">
-                  Базовый объём: <span className="text-indigo-600 font-bold font-mono">10,000 USDT</span>
+
+                {/* Depth selector tabs */}
+                <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200 shrink-0">
+                  <button 
+                    type="button" 
+                    onClick={() => setOrderBookDepthMode("minimal")}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-lg font-sans transition-all cursor-pointer whitespace-nowrap focus:outline-none select-none ${
+                      orderBookDepthMode === "minimal" ? "bg-white text-slate-800 shadow-3xs border border-slate-200/50" : "text-slate-450 hover:text-slate-650"
+                    }`}
+                  >
+                    Минимальный (3 уровня)
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setOrderBookDepthMode("detailed")}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-lg font-sans transition-all cursor-pointer whitespace-nowrap focus:outline-none select-none ${
+                      orderBookDepthMode === "detailed" ? "bg-white text-slate-800 shadow-3xs border border-slate-200/50" : "text-slate-450 hover:text-slate-650"
+                    }`}
+                  >
+                    Подробный (7 уровней)
+                  </button>
                 </div>
               </div>
 
@@ -1054,63 +1083,39 @@ export function DetailedSignalAnalysis({
                 {/* Vertical separator line */}
                 <span className="hidden md:block absolute inset-y-0 left-1/2 -ml-px border-r border-slate-200/60 z-0" />
 
-                {/* Left CEX ASKs depth stacks (Sell orders on buy-CEX platform) */}
-                <div className="space-y-3 z-10 text-left">
-                  <div className="flex justify-between items-center bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl">
-                    <span className="text-xs font-sans font-bold text-rose-700 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                      {signal.buyDex} • ASKS (Продажа)
-                    </span>
-                    <span className="text-[9px] font-extrabold text-rose-500 uppercase bg-white border border-rose-200 px-1.5 rounded font-sans">Лучшая цена</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-100 font-sans">
-                    <span>Цена (USDT)</span>
-                    <span className="text-right">Объём ({baseToken})</span>
-                    <span className="text-right">Сумма (USDT)</span>
-                  </div>
-
-                  {/* Ask list levels */}
-                  <div className="space-y-1.5 font-mono text-xs">
-                    
-                    {/* Level 3 */}
-                    <div className="relative grid grid-cols-3 py-1 px-1.5 items-center hover:bg-rose-50/40 rounded transition-all">
-                      <div className="absolute top-0 bottom-0 right-0 bg-rose-500/5 pointer-events-none z-0 rounded" style={{ width: "30%" }} />
-                      <span className="text-rose-600 font-bold">{(parsedBuy * 1.0012).toFixed(5)}</span>
-                      <span className="text-right text-slate-700">1,820</span>
-                      <span className="text-right text-slate-500">{(parsedBuy * 1.0012 * 1820).toFixed(1)}</span>
-                    </div>
-
-                    {/* Level 2 */}
-                    <div className="relative grid grid-cols-3 py-1 px-1.5 items-center hover:bg-rose-50/40 rounded transition-all">
-                      <div className="absolute top-0 bottom-0 right-0 bg-rose-500/10 pointer-events-none z-0 rounded" style={{ width: "60%" }} />
-                      <span className="text-rose-600 font-bold">{(parsedBuy * 1.0006).toFixed(5)}</span>
-                      <span className="text-right text-slate-700">2,150</span>
-                      <span className="text-right text-slate-500">{(parsedBuy * 1.0006 * 2150).toFixed(1)}</span>
-                    </div>
-
-                    {/* Best level */}
-                    <div className="relative grid grid-cols-3 py-1 px-1.5 items-center bg-rose-50 border-l-2 border-rose-500 rounded font-bold">
-                      <div className="absolute top-0 bottom-0 right-0 bg-rose-500/10 pointer-events-none z-0" style={{ width: "85%" }} />
-                      <span className="text-rose-600">{parsedBuy.toFixed(5)}</span>
-                      <span className="text-right text-slate-900">3,650</span>
-                      <span className="text-right text-slate-700">{(parsedBuy * 3650).toFixed(1)}</span>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Right CEX BIDs depth stacks (Buy orders on sell-CEX platform) */}
+                {/* Left CEX BIDs depth stacks (Buy orders on sell-CEX platform - BUYERS side) */}
                 <div className="space-y-3 z-10 text-left">
                   <div className="flex justify-between items-center bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl">
                     <span className="text-xs font-sans font-bold text-emerald-700 flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                       {signal.sellDex} • BIDS (Покупка)
                     </span>
-                    <span className="text-[9px] font-extrabold text-emerald-600 uppercase bg-white border border-emerald-200 px-1.5 rounded font-sans">Лучшая цена</span>
+                    <span className="text-[9px] font-extrabold text-emerald-600 uppercase bg-white border border-emerald-200 px-1.5 rounded font-sans py-0.5">В стакане</span>
                   </div>
 
-                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-100 font-sans">
+                  {/* My Order parameters detailed box */}
+                  <div className="bg-emerald-50/30 border border-emerald-100/60 p-2.5 rounded-xl text-[10px] text-slate-600 space-y-1 font-sans">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-400 uppercase tracking-wide text-[9px]">Параметры моего ордера:</span>
+                      <strong className="text-emerald-700 uppercase font-extrabold">{orderType === "limit" ? "ЛИМИТ" : "МАРКЕТ"} ПРОДАЖА</strong>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>Объём ордера:</span>
+                      <strong className="text-slate-800 font-mono">
+                        {tokensBought > 0 ? tokensBought.toLocaleString('en-US', { maximumFractionDigits: 2 }) : (4400).toLocaleString('en-US')} {baseToken}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>Цена закрытия (Sell):</span>
+                      <strong className="text-slate-800 font-mono">${parsedSell.toFixed(5)} USDT</strong>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>Итоговая выручка:</span>
+                      <strong className="text-slate-900 font-mono">${bidsSumVal.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDT</strong>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-105 font-sans">
                     <span>Цена (USDT)</span>
                     <span className="text-right">Объём ({baseToken})</span>
                     <span className="text-right">Сумма (USDT)</span>
@@ -1118,31 +1123,95 @@ export function DetailedSignalAnalysis({
 
                   {/* Bid list levels */}
                   <div className="space-y-1.5 font-mono text-xs">
-                    
-                    {/* Best Bid */}
-                    <div className="relative grid grid-cols-3 py-1 px-1.5 items-center bg-emerald-50 border-l-2 border-emerald-500 rounded font-bold">
-                      <div className="absolute top-0 bottom-0 right-0 bg-emerald-500/10 pointer-events-none z-0" style={{ width: "90%" }} />
-                      <span className="text-emerald-600">{parsedSell.toFixed(5)}</span>
-                      <span className="text-right text-slate-900">4,400</span>
-                      <span className="text-right text-slate-700">{(parsedSell * 4400).toFixed(1)}</span>
-                    </div>
+                    {bidLevels.map((lvl, index) => {
+                      if (lvl.isMyOrder) {
+                        return (
+                          <div key={index} className="relative grid grid-cols-3 py-1 px-1.5 items-center bg-emerald-50 border-l-2 border-emerald-500 rounded font-bold">
+                            <div className="absolute top-0 bottom-0 right-0 bg-emerald-500/10 pointer-events-none z-0" style={{ width: lvl.bgWidth }} />
+                            <span className="text-emerald-650 flex items-center gap-1 select-none">
+                              {lvl.price.toFixed(5)}
+                              <span className="shrink-0 text-[8px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 px-1 rounded uppercase tracking-wider font-extrabold py-0.5 border border-emerald-200 dark:border-emerald-500/20">Мой</span>
+                            </span>
+                            <span className="text-right text-slate-900">{lvl.volume.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                            <span className="text-right text-slate-700">{lvl.sum.toLocaleString('en-US', { maximumFractionDigits: 1 })}</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={index} className="relative grid grid-cols-3 py-1 px-1.5 items-center hover:bg-emerald-50/40 rounded transition-all">
+                          <div className="absolute top-0 bottom-0 right-0 bg-emerald-500/5 pointer-events-none z-0 rounded" style={{ width: lvl.bgWidth }} />
+                          <span className="text-emerald-600">{lvl.price.toFixed(5)}</span>
+                          <span className="text-right text-slate-700">{lvl.volume.toLocaleString('en-US')}</span>
+                          <span className="text-right text-slate-500">{lvl.sum.toLocaleString('en-US', { maximumFractionDigits: 1 })}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                    {/* Level 2 */}
-                    <div className="relative grid grid-cols-3 py-1 px-1.5 items-center hover:bg-emerald-50/40 rounded transition-all">
-                      <div className="absolute top-0 bottom-0 right-0 bg-emerald-500/10 pointer-events-none z-0 rounded" style={{ width: "55%" }} />
-                      <span className="text-emerald-600">{(parsedSell * 0.9994).toFixed(5)}</span>
-                      <span className="text-right text-slate-700">1,960</span>
-                      <span className="text-right text-slate-500">{(parsedSell * 0.9994 * 1960).toFixed(1)}</span>
-                    </div>
+                {/* Right CEX ASKs depth stacks (Sell orders on buy-CEX platform - SELLERS side) */}
+                <div className="space-y-3 z-10 text-left">
+                  <div className="flex justify-between items-center bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-xl">
+                    <span className="text-xs font-sans font-bold text-rose-700 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                      {signal.buyDex} • ASKS (Продажа)
+                    </span>
+                    <span className="text-[9px] font-extrabold text-rose-500 uppercase bg-white border border-rose-200 px-1.5 rounded font-sans py-0.5">В стакане</span>
+                  </div>
 
-                    {/* Level 3 */}
-                    <div className="relative grid grid-cols-3 py-1 px-1.5 items-center hover:bg-emerald-50/40 rounded transition-all">
-                      <div className="absolute top-0 bottom-0 right-0 bg-emerald-500/5 pointer-events-none z-0 rounded" style={{ width: "25%" }} />
-                      <span className="text-emerald-600">{(parsedSell * 0.9988).toFixed(5)}</span>
-                      <span className="text-right text-slate-700">2,250</span>
-                      <span className="text-right text-slate-500">{(parsedSell * 0.9988 * 2250).toFixed(1)}</span>
+                  {/* My Order parameters detailed box */}
+                  <div className="bg-rose-50/30 border border-rose-100/60 p-2.5 rounded-xl text-[10px] text-slate-600 space-y-1 font-sans">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-400 uppercase tracking-wide text-[9px]">Параметры моего ордера:</span>
+                      <strong className="text-rose-700 uppercase font-extrabold">{orderType === "limit" ? "ЛИМИТ" : "МАРКЕТ"} ПОКУПКА</strong>
                     </div>
+                    <div className="flex justify-between font-medium">
+                      <span>Затраты (Закупка):</span>
+                      <strong className="text-slate-800 font-mono">${parsedSum.toFixed(2)} USDT</strong>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>Цена входа (Buy):</span>
+                      <strong className="text-slate-800 font-mono">${parsedBuy.toFixed(5)} USDT</strong>
+                    </div>
+                    <div className="flex justify-between font-medium">
+                      <span>Получаемый объём:</span>
+                      <strong className="text-slate-900 font-mono">
+                        {tokensBought > 0 ? tokensBought.toLocaleString('en-US', { maximumFractionDigits: 2 }) : (3650).toLocaleString('en-US')} {baseToken}
+                      </strong>
+                    </div>
+                  </div>
 
+                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-105 font-sans">
+                    <span>Цена (USDT)</span>
+                    <span className="text-right">Объём ({baseToken})</span>
+                    <span className="text-right">Сумма (USDT)</span>
+                  </div>
+
+                  {/* Ask list levels */}
+                  <div className="space-y-1.5 font-mono text-xs">
+                    {askLevels.map((lvl, index) => {
+                      if (lvl.isMyOrder) {
+                        return (
+                          <div key={index} className="relative grid grid-cols-3 py-1 px-1.5 items-center bg-rose-50 border-l-2 border-rose-500 rounded font-bold">
+                            <div className="absolute top-0 bottom-0 right-0 bg-rose-500/10 pointer-events-none z-0" style={{ width: lvl.bgWidth }} />
+                            <span className="text-rose-600 flex items-center gap-1 select-none">
+                              {lvl.price.toFixed(5)}
+                              <span className="shrink-0 text-[8px] bg-rose-100 dark:bg-rose-950/60 text-rose-800 px-1 rounded uppercase tracking-wider font-extrabold py-0.5 border border-rose-200 dark:border-rose-500/20">Мой</span>
+                            </span>
+                            <span className="text-right text-slate-900">{lvl.volume.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                            <span className="text-right text-slate-700">{lvl.sum.toLocaleString('en-US', { maximumFractionDigits: 1 })}</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={index} className="relative grid grid-cols-3 py-1 px-1.5 items-center hover:bg-rose-50/40 rounded transition-all">
+                          <div className="absolute top-0 bottom-0 right-0 bg-rose-500/5 pointer-events-none z-0 rounded" style={{ width: lvl.bgWidth }} />
+                          <span className="text-rose-600 font-bold">{lvl.price.toFixed(5)}</span>
+                          <span className="text-right text-slate-700">{lvl.volume.toLocaleString('en-US')}</span>
+                          <span className="text-right text-slate-500">{lvl.sum.toLocaleString('en-US', { maximumFractionDigits: 1 })}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1293,9 +1362,6 @@ export function DetailedSignalAnalysis({
               Справочник
             </button>
           </div>
-          <span className="text-[9px] text-emerald-600 font-extrabold bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded uppercase font-sans shrink-0 mb-2">
-            99.8% Safe
-          </span>
         </div>
 
         {/* DYNAMIC SCROLLABLE BODY AREA - ALL INPUTS & LOGS GO HERE */}

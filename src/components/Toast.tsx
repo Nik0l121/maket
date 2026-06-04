@@ -86,26 +86,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
             switch (toast.type) {
               case "success":
-                bgClass = "bg-white/95 backdrop-blur-md shadow-lg shadow-emerald-100/30";
-                borderClass = "border-l-4 border-l-emerald-500 border-slate-200/80";
+                bgClass = "bg-white/95 dark:bg-[#0e1726]/95 backdrop-blur-md shadow-lg shadow-emerald-100/30 dark:shadow-emerald-950/20";
+                borderClass = "border-l-4 border-l-emerald-500 border-slate-200/80 dark:border-slate-800/80";
                 iconColor = "text-emerald-500";
                 Icon = CheckCircle2;
                 break;
               case "error":
-                bgClass = "bg-white/95 backdrop-blur-md shadow-lg shadow-rose-100/30";
-                borderClass = "border-l-4 border-l-rose-500 border-slate-200/80";
+                bgClass = "bg-white/95 dark:bg-[#0e1726]/95 backdrop-blur-md shadow-lg shadow-rose-100/30 dark:shadow-rose-950/20";
+                borderClass = "border-l-4 border-l-rose-500 border-slate-200/80 dark:border-slate-800/80";
                 iconColor = "text-rose-500";
                 Icon = AlertCircle;
                 break;
               case "warning":
-                bgClass = "bg-white/95 backdrop-blur-md shadow-lg shadow-amber-100/30";
-                borderClass = "border-l-4 border-l-amber-500 border-slate-200/80";
+                bgClass = "bg-white/95 dark:bg-[#0e1726]/95 backdrop-blur-md shadow-lg shadow-amber-100/30 dark:shadow-amber-950/20";
+                borderClass = "border-l-4 border-l-amber-500 border-slate-200/80 dark:border-slate-800/80";
                 iconColor = "text-amber-500";
                 Icon = AlertTriangle;
                 break;
               case "info":
-                bgClass = "bg-white/95 backdrop-blur-md shadow-lg shadow-blue-100/30";
-                borderClass = "border-l-4 border-l-blue-500 border-slate-200/80";
+                bgClass = "bg-white/95 dark:bg-[#0e1726]/95 backdrop-blur-md shadow-lg shadow-blue-100/30 dark:shadow-indigo-950/20";
+                borderClass = "border-l-4 border-l-blue-500 border-slate-200/80 dark:border-slate-800/80";
                 iconColor = "text-blue-500";
                 Icon = Info;
                 break;
@@ -128,18 +128,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   
                   <div className="flex-1 min-w-0 pr-2">
                     {toast.title && (
-                      <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 leading-none mb-1">
+                      <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 leading-none mb-1">
                         {toast.title}
                       </h4>
                     )}
-                    <p className="text-[12px] font-semibold text-slate-600 leading-snug">
+                    <p className="text-[12px] font-semibold text-slate-600 dark:text-slate-350 leading-snug">
                       {toast.message}
                     </p>
                   </div>
 
                   <button
                     onClick={() => removeToast(toast.id)}
-                    className="shrink-0 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="shrink-0 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                   >
                     <X size={14} className="stroke-[2.5]" />
                   </button>

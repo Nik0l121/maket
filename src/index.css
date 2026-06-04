@@ -6,8 +6,577 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+@variant dark (&:where(.dark, .dark *));
+
+/* Manual dark mode style adapters */
+.dark {
+  color-scheme: dark;
+  --color-slate-850: #101a30;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #070c17;
+}
+
+/* Background overrides for dark mode classes */
+.dark .bg-white {
+  background-color: #0e1726 !important;
+}
+.dark .bg-slate-50,
+.dark .bg-slate-50\/30,
+.dark .bg-slate-50\/40,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/70 {
+  background-color: #162235 !important;
+}
+.dark .bg-slate-50\/20 {
+  background-color: rgba(22, 34, 53, 0.2) !important;
+}
+.dark .bg-slate-100,
+.dark .bg-slate-100\/50,
+.dark .bg-slate-100\/55,
+.dark .bg-slate-100\/70,
+.dark .bg-slate-100\/80 {
+  background-color: #1d2c44 !important;
+}
+.dark .bg-slate-200,
+.dark .bg-slate-200\/60 {
+  background-color: #293b59 !important;
+}
+.dark .bg-\[\#F9FAFB\],
+.dark .bg-\[\#f8fafc\],
+.dark .bg-\[\#F8FAFC\],
+.dark .bg-\[\#FAFBFD\],
+.dark .bg-\[\#fafbfd\],
+.dark .bg-\[\#F9FAFB\]\/90,
+.dark .bg-\[\#FAFBFD\]\/90,
+.dark .bg-\[\#fafbfd\]\/90 {
+  background-color: #070c17 !important;
+}
+.dark .bg-\[\#f6f8fd\]\/60,
+.dark .bg-\[\#F6F8FD\]\/60 {
+  background-color: rgba(22, 34, 53, 0.6) !important;
+}
+.dark .bg-\[\#f1f5f9\] {
+  background-color: #1d2c44 !important;
+}
+.dark .bg-\[\#f0f5ff\],
+.dark .bg-\[\#F0F5FF\] {
+  background-color: #0c1524 !important;
+}
+.dark .bg-\[\#f4f7fc\],
+.dark .bg-\[\#F4F7FC\] {
+  background-color: #162235 !important;
+}
+.dark .bg-\[\#f5f8fd\]\/70,
+.dark .bg-\[\#f5f8fd\]\/60,
+.dark .bg-\[\#F5F8FD\]\/70,
+.dark .bg-\[\#F5F8FD\]\/60 {
+  background-color: rgba(22, 34, 53, 0.6) !important;
+}
+.dark .bg-\[\#fff9f3\]\/85,
+.dark .bg-\[\#fff9f3\]\/80,
+.dark .bg-\[\#FFF9F3\]\/85,
+.dark .bg-\[\#FFF9F3\]\/80 {
+  background-color: rgba(45, 34, 20, 0.8) !important;
+}
+.dark .bg-\[\#fbfcfd\],
+.dark .bg-\[\#FBFCFD\] {
+  background-color: #0e1726 !important;
+}
+.dark .bg-\[\#e2e9fe\],
+.dark .bg-\[\#E2E9FE\],
+.dark .bg-\[\#eef1fc\],
+.dark .bg-\[\#EEF1FC\] {
+  background-color: #1d2c44 !important;
+}
+.dark .bg-\[\#eaf5ff\],
+.dark .bg-\[\#EAF5FF\] {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+.dark .bg-\[\#f8fafc\]\/40,
+.dark .bg-\[\#F8FAFC\]\/40 {
+  background-color: rgba(7, 12, 23, 0.4) !important;
+}
+
+/* Borders and lines for dark mode */
+.dark .border,
+.dark .border-t,
+.dark .border-b,
+.dark .border-l,
+.dark .border-r,
+.dark .border-x,
+.dark .border-y {
+  border-color: rgba(226, 232, 240, 0.08) !important;
+}
+.dark .border-white,
+.dark .border-slate-50,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-205,
+.dark .border-slate-250,
+.dark .border-slate-300,
+.dark .border-slate-350,
+.dark .border-slate-100\/50,
+.dark .border-slate-100\/55,
+.dark .border-slate-100\/60,
+.dark .border-slate-100\/80,
+.dark .border-slate-100\/85,
+.dark .border-slate-200\/30,
+.dark .border-slate-200\/40,
+.dark .border-slate-200\/50,
+.dark .border-slate-200\/60,
+.dark .border-slate-200\/70,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/90,
+.dark .border-\[\#EDF1FD\],
+.dark .border-\[\#edf1fd\],
+.dark .border-\[\#bce2ff\],
+.dark .border-\[\#BCE2FF\],
+.dark .border-\[\#bce2ff\]\/60,
+.dark .border-\[\#BCE2FF\]\/60,
+.dark .border-\[\#bcccfc\],
+.dark .border-\[\#BCCCFC\],
+.dark .border-\[\#dce4fc\],
+.dark .border-\[\#DCE4FC\],
+.dark .border-\[\#c9ddff\],
+.dark .border-\[\#C9DDFF\],
+.dark .border-\[\#e9effd\],
+.dark .border-\[\#E9EFFD\],
+.dark .border-\[\#fde5cc\],
+.dark .border-\[\#FDE5CC\] {
+  border-color: rgba(226, 232, 240, 0.08) !important;
+}
+
+/* Specific interactive buttons with light borders mapped to dark mode */
+.dark button.border-slate-200,
+.dark button.border-slate-100,
+.dark button.border-slate-300,
+.dark button.border {
+  border-color: rgba(226, 232, 240, 0.1) !important;
+}
+
+/* Text Colors */
+.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+.dark .text-slate-850 {
+  color: #e2e8f0 !important;
+}
+.dark .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+.dark .text-slate-700 {
+  color: #cbd5e1 !important;
+}
+.dark .text-slate-650,
+.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+.dark .text-slate-550 {
+  color: #94a3b8 !important;
+}
+.dark .text-slate-500 {
+  color: #64748b !important;
+}
+.dark .text-slate-400 {
+  color: #8e9cb2 !important;
+}
+.dark .text-slate-450 {
+  color: #94a3b8 !important;
+}
+.dark .text-slate-705 {
+  color: #cbd5e1 !important;
+}
+.dark .text-slate-405 {
+  color: #94a3b8 !important;
+}
+.dark .text-\[\#2557e4\],
+.dark .text-\[\#335ae6\],
+.dark .text-blue-500,
+.dark .text-blue-600,
+.dark .text-indigo-500,
+.dark .text-indigo-600 {
+  color: #60a5fa !important;
+}
+.dark .text-emerald-500,
+.dark .text-emerald-600 {
+  color: #34d399 !important;
+}
+.dark .text-rose-500,
+.dark .text-rose-600 {
+  color: #f87171 !important;
+}
+.dark .text-amber-500,
+.dark .text-amber-600,
+.dark .text-amber-805,
+.dark .text-amber-900,
+.dark .text-amber-955 {
+  color: #fde047 !important;
+}
+
+/* Hover/active adjustments */
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1a293e !important;
+}
+.dark .hover\:bg-slate-100:hover {
+  background-color: #21314a !important;
+}
+.dark .hover\:bg-white:hover {
+  background-color: #162235 !important;
+}
+.dark .hover\:bg-blue-100:hover {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+.dark .hover\:bg-slate-200\/50:hover {
+  background-color: rgba(29, 44, 68, 0.6) !important;
+}
+.dark .hover\:bg-slate-50\/40:hover {
+  background-color: rgba(22, 34, 53, 0.4) !important;
+}
+.dark .hover\:bg-slate-50\/30:hover {
+  background-color: rgba(22, 34, 53, 0.3) !important;
+}
+.dark .hover\:bg-slate-50\/50:hover {
+  background-color: rgba(22, 34, 53, 0.5) !important;
+}
+.dark .hover\:bg-slate-200\/60:hover {
+  background-color: rgba(29, 44, 68, 0.6) !important;
+}
+.dark .hover\:border-slate-300:hover {
+  border-color: rgba(226, 232, 240, 0.3) !important;
+}
+.dark .hover\:text-slate-600:hover,
+.dark .hover\:text-slate-800:hover,
+.dark .hover\:text-slate-700:hover {
+  color: #f1f5f9 !important;
+}
+
+/* Translucent bg overrides for Tailwind utility opacity segments in dark mode */
+.dark .bg-slate-50\/80 {
+  background-color: #070c17 !important;
+}
+.dark .bg-slate-50\/50 {
+  background-color: rgba(22, 34, 53, 0.5) !important;
+}
+.dark .bg-slate-50\/40 {
+  background-color: rgba(22, 34, 53, 0.45) !important;
+}
+.dark .bg-slate-50\/30 {
+  background-color: rgba(22, 34, 53, 0.3) !important;
+}
+.dark .bg-slate-100\/50 {
+  background-color: rgba(29, 44, 68, 0.5) !important;
+}
+.dark .bg-slate-200\/60 {
+  background-color: rgba(29, 44, 68, 0.6) !important;
+}
+.dark .bg-blue-50\/50 {
+  background-color: rgba(30, 58, 138, 0.2) !important;
+}
+.dark .border-blue-100\/50 {
+  border-color: rgba(59, 130, 246, 0.25) !important;
+}
+.dark .text-blue-900 {
+  color: #93c5fd !important;
+}
+.dark .text-blue-800\/70 {
+  color: #abcfff !important;
+}
+
+/* Divide / list tables selectors in dark mode */
+.dark .divide-slate-50 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-100\/50 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-100\/55 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-100\/60 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-100\/80 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-100\/85 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200\/30 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200\/40 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200\/50 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200\/60 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200\/70 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200\/80 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200\/90 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-250 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-300 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-350 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-x > :not([hidden]) ~ :not([hidden]),
+.dark .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(226, 232, 240, 0.08) !important;
+}
+
+/* Comprehensive Table element overrides in dark mode */
+.dark table,
+.dark thead,
+.dark tbody,
+.dark tfoot,
+.dark tr,
+.dark th,
+.dark td {
+  border-color: rgba(226, 232, 240, 0.08) !important;
+}
+.dark thead tr {
+  background-color: #121d30 !important;
+}
+.dark tbody tr:hover {
+  background-color: rgba(22, 34, 53, 0.4) !important;
+}
+
+/* Color Badge & Alert pills adapted for Dark Mode details/statuses */
+.dark .bg-indigo-50,
+.dark .bg-indigo-50\/5,
+.dark .bg-indigo-50\/10,
+.dark .bg-blue-50,
+.dark .bg-blue-100,
+.dark .bg-blue-50\/10,
+.dark .bg-blue-50\/20 {
+  background-color: rgba(96, 165, 250, 0.12) !important;
+  color: #93c5fd !important;
+}
+.dark .text-indigo-700,
+.dark .text-indigo-800,
+.dark .text-blue-750,
+.dark .text-[#2557e4],
+.dark .text-[#335ae6] {
+  color: #93c5fd !important;
+}
+.dark .border-indigo-100,
+.dark .border-blue-100,
+.dark .border-blue-200,
+.dark .border-blue-300 {
+  border-color: rgba(96, 165, 250, 0.2) !important;
+}
+
+.dark .bg-emerald-50,
+.dark .bg-emerald-100,
+.dark .bg-emerald-50\/5,
+.dark .bg-emerald-50\/10,
+.dark .bg-emerald-50\/20 {
+  background-color: rgba(52, 211, 153, 0.12) !important;
+  color: #a7f3d0 !important;
+}
+.dark .text-emerald-700,
+.dark .text-emerald-800 {
+  color: #a7f3d0 !important;
+}
+.dark .border-emerald-100,
+.dark .border-emerald-200 {
+  border-color: rgba(52, 211, 153, 0.2) !important;
+}
+
+.dark .bg-rose-50,
+.dark .bg-rose-100,
+.dark .bg-rose-50\/5,
+.dark .bg-rose-50\/10 {
+  background-color: rgba(248, 113, 113, 0.12) !important;
+  color: #fecaca !important;
+}
+.dark .text-rose-700,
+.dark .text-rose-800 {
+  color: #fecaca !important;
+}
+.dark .border-rose-100,
+.dark .border-rose-200 {
+  border-color: rgba(248, 113, 113, 0.2) !important;
+}
+
+.dark .bg-amber-50,
+.dark .bg-amber-100,
+.dark .bg-amber-50\/5,
+.dark .bg-amber-50\/10 {
+  background-color: rgba(251, 191, 36, 0.12) !important;
+  color: #fef08a !important;
+}
+.dark .text-amber-700,
+.dark .text-amber-800 {
+  color: #fef08a !important;
+}
+.dark .border-amber-100,
+.dark .border-amber-200 {
+  border-color: rgba(251, 191, 36, 0.2) !important;
+}
+
+/* Custom shadow adaptation to prevent radioactive/colored glowing borders in dark mode */
+.dark .shadow-blue-200,
+.dark .shadow-blue-100,
+.dark .shadow-indigo-150,
+.dark .shadow-rose-200,
+.dark .shadow-emerald-200,
+.dark .shadow-amber-100,
+.dark .shadow-xl {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.61), 0 8px 10px -6px rgba(0, 0, 0, 0.45) !important;
+}
+.dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4) !important;
+}
+.dark .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Form input adjustments on dark mode */
+.dark input, 
+.dark select, 
+.dark textarea {
+  background-color: #070c17 !important;
+  color: #f8fafc !important;
+  border-color: rgba(226, 232, 240, 0.15) !important;
+}
+
+.dark input:focus, 
+.dark select:focus, 
+.dark textarea:focus {
+  border-color: #3b82f6 !important;
+  outline: 2px solid rgba(59, 130, 246, 0.25) !important;
+}
+
+.dark input::placeholder, 
+.dark textarea::placeholder {
+  color: #475569 !important;
+}
+
+/* Dialog & drawers background */
+.dark .bg-white\/80 {
+  background-color: rgba(7, 12, 23, 0.8) !important;
+}
+
+.dark .shadow-sm,
+.dark .shadow-xs,
+.dark .shadow-3xs,
+.dark .shadow-2xl {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* --- UNIVERSAL DARK ADAPTERS --- */
+/* Universal Border and Divide overrides for any element or responsive state in dark mode */
+.dark *,
+.dark *::before,
+.dark *::after {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Specific exceptions for coloured borders to stay vibrant in dark mode */
+.dark [class*="border-emerald"],
+.dark [class*="border-green"],
+.dark [class*="border-success"] {
+  border-color: rgba(52, 211, 153, 0.25) !important;
+}
+.dark [class*="border-rose"],
+.dark [class*="border-red"],
+.dark [class*="border-danger"] {
+  border-color: rgba(248, 113, 113, 0.25) !important;
+}
+.dark [class*="border-blue"],
+.dark [class*="border-indigo"],
+.dark [class*="border-primary"] {
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+.dark [class*="border-amber"],
+.dark [class*="border-yellow"],
+.dark [class*="border-warning"] {
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+.dark [class*="border-transparent"] {
+  border-color: transparent !important;
+}
+
+/* Extra typography adapters for outstanding slate and text levels */
+.dark .text-slate-750,
+.dark .text-slate-755,
+.dark .text-slate-620,
+.dark .text-slate-655,
+.dark .text-slate-705,
+.dark .text-slate-805,
+.dark .text-slate-850,
+.dark .text-slate-700,
+.dark .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-350,
+.dark .text-slate-405,
+.dark .text-slate-450 {
+  color: #94a3b8 !important;
+}
+
+/* Map background opacity segments to look dark-adapted */
+.dark .bg-slate-100\/30 {
+  background-color: rgba(29, 44, 68, 0.35) !important;
+}
+.dark .bg-slate-50\/50 {
+  background-color: rgba(22, 34, 53, 0.5) !important;
+}
+.dark .bg-slate-50\/40 {
+  background-color: rgba(22, 34, 53, 0.4) !important;
+}
+.dark .bg-slate-50\/30 {
+  background-color: rgba(22, 34, 53, 0.3) !important;
+}
+.dark .bg-blue-50\/15 {
+  background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Beautiful elevation layer pattern: nested white containers inside darker containers (e.g. coin detail cards) */
+.dark .bg-slate-50\/50 .bg-white,
+.dark .bg-slate-50 .bg-white,
+.dark .bg-slate-100 .bg-white,
+.dark #notifications-split-view .bg-white {
+  background-color: #121d30 !important;
+}
+
+/* Dynamically catch color background opacities so they remain dark-adapted */
+.dark [class*="bg-emerald-50/"],
+.dark [class*="bg-emerald-100/"] {
+  background-color: rgba(52, 211, 153, 0.1) !important;
+}
+.dark [class*="bg-rose-50/"],
+.dark [class*="bg-rose-100/"] {
+  background-color: rgba(248, 113, 113, 0.1) !important;
+}
+.dark [class*="bg-blue-50/"],
+.dark [class*="bg-blue-100/"],
+.dark [class*="bg-indigo-50/"] {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+.dark [class*="bg-amber-50/"],
+.dark [class*="bg-amber-100/"] {
+  background-color: rgba(251, 191, 36, 0.1) !important;
+}
+
+/* Specifically adapt special custom gradients/classes to dark mode */
+.dark .from-\[\#ebf5ff\]\/60 {
+  background-image: none !important;
+  background-color: #162235 !important;
+}
+.dark .bg-\[\#f6f8fd\]\/60 {
+  background-color: #101a30 !important;
+}
+.dark .bg-\[\#f8fafc\]\/40 {
+  background-color: rgba(7, 12, 23, 0.45) !important;
+}
+
+/* Custom highly visible loading spinners for light and dark themes */
+.animated-spinner-orbit-outer {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+.dark .animated-spinner-orbit-outer {
+  border-color: rgba(148, 163, 184, 0.15) !important;
+}
+
+.animated-spinner-main {
+  border-color: transparent !important;
+  border-top-color: #3b82f6 !important;
+  border-right-color: #3b82f6 !important;
+}
+.animated-spinner-inner {
+  border-color: transparent !important;
+  border-bottom-color: #60a5fa !important;
+  border-left-color: #60a5fa !important;
+}
+
 @layer base {
   body {
-    @apply bg-[#F9FAFB] text-slate-900 antialiased;
+    @apply bg-[#F9FAFB] text-slate-900 antialiased dark:bg-[#070c17] dark:text-[#f8fafc] transition-colors duration-200;
   }
 }

@@ -26,6 +26,7 @@ import { Signal, containerVariants } from "../types";
 import { useToast } from "../components/Toast";
 
 import { DetailedSignalAnalysis } from "./DetailedAnalysisPage";
+import { HistoryPage } from "./HistoryPage";
 
 // --- Signal Drawer Component ---
 export function SignalDrawer(props: { 
@@ -949,6 +950,7 @@ export function ScannerPage({
   isScannerRunning,
   setIsScannerRunning,
   runningArbitrages = [],
+  scannerSubView = "scanner",
 }: {
   onSelectSignal: (signal: Signal) => void;
   onShowDetailedAnalysis?: (signal: Signal) => void;
@@ -956,6 +958,7 @@ export function ScannerPage({
   setIsScannerRunning: (running: boolean) => void;
   runningArbitrages?: any[];
   key?: React.Key;
+  scannerSubView?: "scanner" | "history";
 }) {
   const { showToast } = useToast();
 
@@ -1164,7 +1167,8 @@ export function ScannerPage({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEFT COLUMN: Controls & Settings */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-6">
+        {scannerSubView === "scanner" && (
+          <div className="lg:col-span-4 xl:col-span-3 space-y-6">
           
           {/* Scanner Control and Stats Center */}
           <div className="bg-white border border-slate-200/50 rounded-3xl p-6 shadow-3xs space-y-5 relative overflow-hidden">
@@ -1327,232 +1331,278 @@ export function ScannerPage({
           </div>
 
         </div>
+        )}
 
         {/* RIGHT PREMIUM SPACE AREA FOR INTERMEDIATE STATS AND SPREADSHEETS */}
-        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-
-          {/* Filtering Header Tab bar */}
-          <div className="bg-white border border-slate-200/50 rounded-3xl p-4 shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-            
-            {/* Horizontal tab list with counters */}
-            <div className="flex overflow-x-auto scrollbar-none gap-1 pb-1.5 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 flex-nowrap md:flex-wrap">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveTab(cat.id)}
-                  className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
-                    activeTab === cat.id 
-                      ? "bg-slate-900 text-white shadow-xs" 
-                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                  }`}
-                >
-                  {cat.label}
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black ${
-                    activeTab === cat.id ? "bg-white/10 text-white" : "bg-slate-100 text-slate-500"
-                  }`}>
-                    {cat.count}
+        <div className={`${scannerSubView === "history" ? "lg:col-span-12" : "lg:col-span-8 xl:col-span-9"} space-y-6`}>
+          {scannerSubView === "history" ? (
+            <HistoryPage />
+          ) : (
+            <>
+              {/* Premium Gradient Deal Summary Metrics (identical to HistoryPage for unified state experience) */}
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 select-none">
+                {/* Card 1: Profit */}
+                <div className="bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/25 dark:to-teal-950/20 border border-emerald-500/10 dark:border-emerald-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
+                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">Всего чистой прибыли</span>
+                  <span className="text-xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400 mt-2 block">
+                    +$21.72
                   </span>
+                  <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
+                    <TrendingUp size={10} className="text-emerald-500" /> Вычет всех сборов сети
+                  </p>
+                </div>
+
+                {/* Card 2: Successful Trades */}
+                <div className="bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-950/25 dark:to-indigo-950/20 border border-blue-500/10 dark:border-blue-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
+                  <span className="text-[9px] font-black text-blue-600 dark:text-blue-450 uppercase tracking-widest leading-none">Успешно закрыто</span>
+                  <span className="text-xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-205 mt-2 block">
+                    6 / 7 кругов
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1">Остальные диверсифицированы</span>
+                </div>
+
+                {/* Card 3: Win Rate */}
+                <div className="bg-gradient-to-br from-indigo-500/5 to-violet-500/5 dark:from-indigo-950/25 dark:to-violet-950/20 border border-indigo-500/10 dark:border-indigo-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
+                  <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest leading-none">Успешность винрейт</span>
+                  <span className="text-xl font-black font-mono tracking-tight text-indigo-500 dark:text-indigo-400 mt-2 block">
+                    85.7%
+                  </span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1">Высокая точность кругов</span>
+                </div>
+
+                {/* Card 4: Protected Capital */}
+                <div className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 dark:from-amber-950/25 dark:to-orange-950/20 border border-amber-500/15 dark:border-amber-500/20 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
+                  <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest leading-none">Сохраненный депозит</span>
+                  <span className="text-xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-205 mt-2 block">
+                    $9,410.00
+                  </span>
+                  <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400 mt-1 leading-normal uppercase text-[8px] font-extrabold tracking-wider bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/20 dark:border-emerald-500/15 self-start">ПОД ЗАЩИТОЙ SLIPPAGE</span>
+                </div>
+              </div>
+
+              {/* Filtering Header Tab bar */}
+              <div className="bg-white border border-slate-200/50 rounded-3xl p-4 shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                
+                {/* Horizontal tab list with counters */}
+                <div className="flex overflow-x-auto scrollbar-none gap-1 pb-1.5 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 flex-nowrap md:flex-wrap">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveTab(cat.id)}
+                      className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+                        activeTab === cat.id 
+                          ? "bg-slate-900 text-white shadow-xs" 
+                          : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                      }`}
+                    >
+                      {cat.label}
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black ${
+                        activeTab === cat.id ? "bg-white/10 text-white" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {cat.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Live Search Search Bar */}
+                <div className="relative min-w-[200px]">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Фильтр по паре..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200/50 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* HIGH-PICTURE SPREADSHEET CARD LIST (Clean tabular view) */}
+              <div className="bg-white border border-slate-200/50 rounded-3xl shadow-3xs overflow-hidden">
+                
+                {/* Responsive Table Columns Title headers */}
+                <div className="hidden md:grid grid-cols-12 gap-2 px-6 py-4.5 bg-slate-50/60 border-b border-slate-200/50 text-[10px] font-black uppercase text-slate-450 tracking-wider">
+                  <span className="col-span-3">ПАРА / СЕТЬ</span>
+                  <span className="col-span-3">СПРЕД И ROI</span>
+                  <span className="col-span-2 text-center">ПОКУПКА (CEX)</span>
+                  <span className="col-span-2 text-center">ПРОДАЖА (CEX)</span>
+                  <span className="col-span-2 text-right">ДЕЙСТВИЯ</span>
+                </div>
+
+                {/* List rendered rows */}
+                <div className="divide-y divide-slate-100">
+                  <AnimatePresence initial={false}>
+                    {filtered.length > 0 ? (
+                      filtered.map((s) => {
+                        const parsedSpread = parseFloat(s.spread.replace("%", ""));
+                        const isPositive = parsedSpread >= 0;
+
+                        const activeArb = runningArbitrages.find((arb: any) => arb.signal.id === s.id);
+                        const hasActiveArb = !!activeArb;
+                        const isCurrentlyExecuting = hasActiveArb && activeArb.isExecuting;
+                        const arbStep = hasActiveArb ? activeArb.executionStep : 0;
+
+                        return (
+                          <motion.div
+                            key={s.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className={`p-5 md:px-6 md:py-4.5 grid grid-cols-1 md:grid-cols-12 gap-3.5 md:gap-2 items-center hover:bg-slate-50/30 transition-all group border-l-4 ${
+                              isCurrentlyExecuting
+                                ? "bg-indigo-50/10 border-l-indigo-500 animate-[pulse_2.5s_infinite]"
+                                : hasActiveArb && arbStep === 7
+                                  ? "bg-emerald-50/5 border-l-emerald-500"
+                                  : "border-l-transparent"
+                            }`}
+                          >
+                            {/* Token label descriptor */}
+                            <div className="col-span-3 flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-[11px] ${
+                                isPositive
+                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                  : "bg-rose-50 text-rose-600 border border-rose-100"
+                              }`}>
+                                {s.pair.split("/")[0]}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">
+                                    {s.pair}
+                                  </span>
+                                  <span className="text-[8px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200/40 rounded-md font-mono">
+                                    {s.network}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 mt-1">
+                                  <span className="text-[10px] text-slate-400 font-bold block">
+                                    Активен: {liveTimers[s.id] || "00:00:23"}
+                                  </span>
+                                  {isCurrentlyExecuting && (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/70 rounded-md animate-pulse">
+                                      <span className="w-1 h-1 rounded-full bg-indigo-600 animate-ping" />
+                                      Арбитраж запущен ({Math.round(arbStep * 14.2)}%)
+                                    </span>
+                                  )}
+                                  {hasActiveArb && !isCurrentlyExecuting && arbStep === 7 && (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100/60 rounded-md">
+                                      ✓ Выполнен (+{(activeArb.netProfit || 0.2312).toFixed(4)} USDT)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Spread status and ROI */}
+                            <div className="col-span-3 flex flex-col justify-center space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md font-mono border ${
+                                  isPositive 
+                                    ? "bg-emerald-50 text-emerald-600 border-emerald-200/70" 
+                                    : "bg-rose-50 text-rose-500 border-rose-200/70"
+                                }`}>
+                                  {s.spread}
+                                </span>
+                                <span className={`text-[11px] font-black font-mono ${
+                                  isPositive ? "text-emerald-600" : "text-rose-600"
+                                }`}>
+                                  {s.profit}
+                                </span>
+                              </div>
+                              <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">
+                                Чистая доходность
+                              </span>
+                            </div>
+
+                            {/* Buying Dex pricing */}
+                            <div className="col-span-2 text-center flex md:flex-col justify-between md:justify-center items-center gap-1 bg-slate-50 md:bg-transparent px-3 py-1.5 md:p-0 rounded-xl border border-slate-100 md:border-transparent">
+                              <span className="text-[10px] font-bold text-slate-455 md:hidden uppercase">ПОКУПКА</span>
+                              <div>
+                                <span className="text-[9.5px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  {s.buyDex}
+                                </span>
+                                <span className="text-[11.5px] font-bold text-slate-800 font-mono block mt-1">
+                                  ${parseFloat(s.buyPrice).toFixed(4)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Selling Dex Pricing */}
+                            <div className="col-span-2 text-center flex md:flex-col justify-between md:justify-center items-center gap-1 bg-slate-50 md:bg-transparent px-3 py-1.5 md:p-0 rounded-xl border border-slate-100 md:border-transparent">
+                              <span className="text-[10px] font-bold text-slate-455 md:hidden uppercase">ПРОДАЖА</span>
+                              <div>
+                                <span className="text-[9.5px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md font-mono">
+                                  {s.sellDex}
+                                </span>
+                                <span className="text-[11.5px] font-bold text-slate-800 font-mono block mt-1 font-sans">
+                                  ${parseFloat(s.sellPrice).toFixed(4)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Action details Dual ButtonsTriggers */}
+                            <div className="col-span-2 flex flex-row md:flex-col lg:flex-row gap-1.5 justify-end items-center pt-2 md:pt-0">
+                              <button
+                                onClick={() => onSelectSignal(s)}
+                                title="Открыть панель быстрых сделок"
+                                className="w-full lg:w-auto px-2 py-1.5 bg-amber-550/10 hover:bg-amber-500 hover:text-white text-amber-700 hover:border-amber-500 border border-amber-200/50 rounded-lg font-black text-[9.5px] tracking-tight transition-all flex items-center justify-center gap-1 active:scale-95 duration-110 flex-1 cursor-pointer"
+                              >
+                                <Zap size={11} />
+                                <span>Сделка</span>
+                              </button>
+                              
+                              <button
+                                onClick={() => {
+                                  if (onShowDetailedAnalysis) {
+                                    onShowDetailedAnalysis(s);
+                                  } else {
+                                    onSelectSignal(s);
+                                  }
+                                }}
+                                title="Открыть детальные графики и аналитику"
+                                className="w-full lg:w-auto px-2 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 hover:border-blue-600 border border-blue-200/55 rounded-lg font-black text-[9.5px] tracking-tight transition-all flex items-center justify-center gap-1 active:scale-95 duration-110 flex-1 cursor-pointer"
+                              >
+                                <TrendingUp size={11} />
+                                <span>Анализ</span>
+                              </button>
+                            </div>
+
+                          </motion.div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-12 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mx-auto">
+                          <Info size={18} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">Цепочки отсутствуют</h4>
+                          <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto mt-0.5">
+                            Нет active-арбитражных связок, соответствующих выбранным критериям фильтрации.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Table history footer badge */}
+              <div className="flex items-center justify-between text-slate-450 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-[10px] font-bold tracking-tight bg-slate-50">
+                <span>Показаны сигналы за последние 60 минут текущей сессии</span>
+                <button 
+                  type="button" 
+                  onClick={() => showToast("Перенаправление в архив сохраненных сигналов...", "info")}
+                  className="text-blue-500 hover:text-blue-600 flex items-center gap-1 transition-all"
+                >
+                  Вся история
+                  <ArrowUpRight size={12} />
                 </button>
-              ))}
-            </div>
-
-            {/* Live Search Search Bar */}
-            <div className="relative min-w-[200px]">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Фильтр по паре..."
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200/50 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-sans"
-              />
-            </div>
-          </div>
-
-          {/* HIGH-PICTURE SPREADSHEET CARD LIST (Clean tabular view) */}
-          <div className="bg-white border border-slate-200/50 rounded-3xl shadow-3xs overflow-hidden">
-            
-            {/* Responsive Table Columns Title headers */}
-            <div className="hidden md:grid grid-cols-12 gap-2 px-6 py-4.5 bg-slate-50/60 border-b border-slate-200/50 text-[10px] font-black uppercase text-slate-450 tracking-wider">
-              <span className="col-span-3">ПАРА / СЕТЬ</span>
-              <span className="col-span-3">СПРЕД И ROI</span>
-              <span className="col-span-2 text-center">ПОКУПКА (CEX)</span>
-              <span className="col-span-2 text-center">ПРОДАЖА (CEX)</span>
-              <span className="col-span-2 text-right">ДЕЙСТВИЯ</span>
-            </div>
-
-            {/* List rendered rows */}
-            <div className="divide-y divide-slate-100">
-              <AnimatePresence initial={false}>
-                {filtered.length > 0 ? (
-                  filtered.map((s) => {
-                    const parsedSpread = parseFloat(s.spread.replace("%", ""));
-                    const isPositive = parsedSpread >= 0;
-
-                    const activeArb = runningArbitrages.find((arb: any) => arb.signal.id === s.id);
-                    const hasActiveArb = !!activeArb;
-                    const isCurrentlyExecuting = hasActiveArb && activeArb.isExecuting;
-                    const arbStep = hasActiveArb ? activeArb.executionStep : 0;
-
-                    return (
-                      <motion.div
-                        key={s.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className={`p-5 md:px-6 md:py-4.5 grid grid-cols-1 md:grid-cols-12 gap-3.5 md:gap-2 items-center hover:bg-slate-50/30 transition-all group border-l-4 ${
-                          isCurrentlyExecuting
-                            ? "bg-indigo-50/10 border-l-indigo-500 animate-[pulse_2.5s_infinite]"
-                            : hasActiveArb && arbStep === 7
-                              ? "bg-emerald-50/5 border-l-emerald-500"
-                              : "border-l-transparent"
-                        }`}
-                      >
-                        {/* Token label descriptor */}
-                        <div className="col-span-3 flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-[11px] ${
-                            isPositive
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                              : "bg-rose-50 text-rose-600 border border-rose-100"
-                          }`}>
-                            {s.pair.split("/")[0]}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">
-                                {s.pair}
-                              </span>
-                              <span className="text-[8px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200/40 rounded-md font-mono">
-                                {s.network}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 mt-1">
-                              <span className="text-[10px] text-slate-400 font-bold block">
-                                Активен: {liveTimers[s.id] || "00:00:23"}
-                              </span>
-                              {isCurrentlyExecuting && (
-                                <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/70 rounded-md animate-pulse">
-                                  <span className="w-1 h-1 rounded-full bg-indigo-600 animate-ping" />
-                                  Арбитраж запущен ({Math.round(arbStep * 14.2)}%)
-                                </span>
-                              )}
-                              {hasActiveArb && !isCurrentlyExecuting && arbStep === 7 && (
-                                <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100/60 rounded-md">
-                                  ✓ Выполнен (+{(activeArb.netProfit || 0.2312).toFixed(4)} USDT)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Spread status and ROI */}
-                        <div className="col-span-3 flex flex-col justify-center space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md font-mono border ${
-                              isPositive 
-                                ? "bg-emerald-50 text-emerald-600 border-emerald-200/70" 
-                                : "bg-rose-50 text-rose-500 border-rose-200/70"
-                            }`}>
-                              {s.spread}
-                            </span>
-                            <span className={`text-[11px] font-black font-mono ${
-                              isPositive ? "text-emerald-600" : "text-rose-600"
-                            }`}>
-                              {s.profit}
-                            </span>
-                          </div>
-                          <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">
-                            Чистая доходность
-                          </span>
-                        </div>
-
-                        {/* Buying Dex pricing */}
-                        <div className="col-span-2 text-center flex md:flex-col justify-between md:justify-center items-center gap-1 bg-slate-50 md:bg-transparent px-3 py-1.5 md:p-0 rounded-xl border border-slate-100 md:border-transparent">
-                          <span className="text-[10px] font-bold text-slate-450 md:hidden uppercase">ПОКУПКА</span>
-                          <div>
-                            <span className="text-[9.5px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                              {s.buyDex}
-                            </span>
-                            <span className="text-[11.5px] font-bold text-slate-800 font-mono block mt-1">
-                              ${parseFloat(s.buyPrice).toFixed(4)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Selling Dex Pricing */}
-                        <div className="col-span-2 text-center flex md:flex-col justify-between md:justify-center items-center gap-1 bg-slate-50 md:bg-transparent px-3 py-1.5 md:p-0 rounded-xl border border-slate-100 md:border-transparent">
-                          <span className="text-[10px] font-bold text-slate-450 md:hidden uppercase">ПРОДАЖА</span>
-                          <div>
-                            <span className="text-[9.5px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md font-mono">
-                              {s.sellDex}
-                            </span>
-                            <span className="text-[11.5px] font-bold text-slate-800 font-mono block mt-1 font-sans">
-                              ${parseFloat(s.sellPrice).toFixed(4)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Action details Dual ButtonsTriggers */}
-                        <div className="col-span-2 flex flex-row md:flex-col lg:flex-row gap-1.5 justify-end items-center pt-2 md:pt-0">
-                          <button
-                            onClick={() => onSelectSignal(s)}
-                            title="Открыть панель быстрых сделок"
-                            className="w-full lg:w-auto px-2 py-1.5 bg-amber-550/10 hover:bg-amber-500 hover:text-white text-amber-700 hover:border-amber-500 border border-amber-200/50 rounded-lg font-black text-[9.5px] tracking-tight transition-all flex items-center justify-center gap-1 active:scale-95 duration-110 flex-1 cursor-pointer"
-                          >
-                            <Zap size={11} />
-                            <span>Сделка</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              if (onShowDetailedAnalysis) {
-                                onShowDetailedAnalysis(s);
-                              } else {
-                                onSelectSignal(s);
-                              }
-                            }}
-                            title="Открыть детальные графики и аналитику"
-                            className="w-full lg:w-auto px-2 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 hover:border-blue-600 border border-blue-200/55 rounded-lg font-black text-[9.5px] tracking-tight transition-all flex items-center justify-center gap-1 active:scale-95 duration-110 flex-1 cursor-pointer"
-                          >
-                            <TrendingUp size={11} />
-                            <span>Анализ</span>
-                          </button>
-                        </div>
-
-                      </motion.div>
-                    );
-                  })
-                ) : (
-                  <div className="p-12 text-center space-y-3">
-                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mx-auto">
-                      <Info size={18} />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">Цепочки отсутствуют</h4>
-                      <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto mt-0.5">
-                        Нет активных арбитражных связок, соответствующих выбранным критериям фильтрации.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Table history footer badge */}
-          <div className="flex items-center justify-between text-slate-450 border border-slate-200/50 rounded-2xl px-5 py-3.5 text-[10px] font-bold tracking-tight bg-slate-50">
-            <span>Показаны сигналы за последние 60 минут текущей сессии</span>
-            <button 
-              type="button" 
-              onClick={() => showToast("Перенаправление в архив сохраненных сигналов...", "info")}
-              className="text-blue-500 hover:text-blue-600 flex items-center gap-1 transition-all"
-            >
-              Вся история
-              <ArrowUpRight size={12} />
-            </button>
-          </div>
-
+              </div>
+            </>
+          )}
         </div>
 
       </div>

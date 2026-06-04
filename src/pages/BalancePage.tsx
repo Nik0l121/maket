@@ -450,7 +450,7 @@ export function BalancePage({ selectedExchangeFilter = "Все", balanceSubView 
         /* --- BRAND NEW BENTO GRID DESIGN (NO DRY TABLES!) --- */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredExchanges.length === 0 ? (
-            <div className="col-span-full py-16 text-center bg-white border border-slate-205 rounded-3xl">
+            <div className="col-span-full py-16 text-center bg-white border border-slate-200/60 dark:border-slate-800 rounded-3xl">
               <span className="text-xs font-bold text-slate-400">Биржи, удовлетворяющие условию фильтра, не найдены</span>
             </div>
           ) : (
@@ -624,7 +624,7 @@ export function BalancePage({ selectedExchangeFilter = "Все", balanceSubView 
                       href={exchange.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-[9.5px] font-black uppercase tracking-wider border border-slate-205 hover:border-slate-300 text-slate-655 hover:text-slate-800 bg-white rounded-lg transition-all shadow-4xs cursor-pointer active:scale-97"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-[9.5px] font-black uppercase tracking-wider border border-slate-200/60 dark:border-slate-800/80 hover:border-slate-300 text-slate-655 hover:text-slate-800 bg-white rounded-lg transition-all shadow-4xs cursor-pointer active:scale-97"
                     >
                       Открыть биржу
                       <ExternalLink size={10} className="stroke-[2.5]" />
