@@ -56,7 +56,13 @@ export function DetailedSignalAnalysis({
   // Input fields loaded with signal defaults
   const [buyPriceInput, setBuyPriceInput] = useState<string>(signal.buyPrice);
   const [sellPriceInput, setSellPriceInput] = useState<string>(signal.sellPrice);
-  const [sumInput, setSumInput] = useState<string>("11.72");
+  const [sumInput, setSumInput] = useState<string>(() => {
+    const mode = localStorage.getItem("arbitrage_amount_mode") || "manual";
+    if (mode === "balance") {
+      return "11.72";
+    }
+    return localStorage.getItem("arbitrage_amount_usdt") || "11.72";
+  });
   
   // State for balance
   const [balance, setBalance] = useState<number>(11.72);
@@ -88,7 +94,12 @@ export function DetailedSignalAnalysis({
     setSellPriceInput(signal.sellPrice);
     prevBuyRef.current = signal.buyPrice;
     prevSellRef.current = signal.sellPrice;
-    setSumInput("11.72");
+    const mode = localStorage.getItem("arbitrage_amount_mode") || "manual";
+    if (mode === "balance") {
+      setSumInput("11.72");
+    } else {
+      setSumInput(localStorage.getItem("arbitrage_amount_usdt") || "11.72");
+    }
     setConfirmed(true);
     setPriceDeviation(0);
   }, [signal]);
@@ -539,7 +550,7 @@ export function DetailedSignalAnalysis({
           <div className="space-y-6">
             
             {/* LIVE PRICE TREND GRAPH card WITH LIGHT THEMATIC INTERFACES */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-xs space-y-4 text-left">
+            <div className="bg-white rounded-3xl p-5 shadow-xs space-y-4 text-left">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-sans flex items-center gap-2">
@@ -830,7 +841,7 @@ export function DetailedSignalAnalysis({
             </div>
 
             {/* LIVE SESSION ORDERS TERMINAL BLOCK (Open & Completed Orders with data) */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6 text-left font-sans">
+            <div className="bg-white rounded-3xl p-6 shadow-xs space-y-6 text-left font-sans">
               
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -1043,7 +1054,7 @@ export function DetailedSignalAnalysis({
             </div>
 
             {/* Side-by-Side Live Exchange Order Books depth grids */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-xs space-y-4">
+            <div className="bg-white rounded-3xl p-5 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-sans flex items-center gap-2">
@@ -1115,7 +1126,7 @@ export function DetailedSignalAnalysis({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-105 font-sans">
+                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-100 font-sans">
                     <span>Цена (USDT)</span>
                     <span className="text-right">Объём ({baseToken})</span>
                     <span className="text-right">Сумма (USDT)</span>
@@ -1179,9 +1190,9 @@ export function DetailedSignalAnalysis({
                         {tokensBought > 0 ? tokensBought.toLocaleString('en-US', { maximumFractionDigits: 2 }) : (3650).toLocaleString('en-US')} {baseToken}
                       </strong>
                     </div>
-                  </div>
+                    </div>
 
-                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-105 font-sans">
+                  <div className="grid grid-cols-3 text-[9px] font-extrabold text-slate-400 uppercase py-1 border-b border-slate-100 font-sans">
                     <span>Цена (USDT)</span>
                     <span className="text-right">Объём ({baseToken})</span>
                     <span className="text-right">Сумма (USDT)</span>
@@ -1219,7 +1230,7 @@ export function DetailedSignalAnalysis({
             </div>
 
             {/* COMPREHENSIVE COMPLIANCE CHECKLIST REPORT */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 text-left shadow-xs space-y-4">
+            <div className="bg-white rounded-3xl p-5 text-left shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-100 pb-3">
                 <div>
                   <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-widest font-sans flex items-center gap-1.5">

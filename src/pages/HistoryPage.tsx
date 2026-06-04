@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { 
   Clock, 
   Search, 
@@ -41,9 +42,7 @@ export interface HistoricalTrade {
   roi: number;
   networkFee: number;
   networkFeeAsset: string;
-  txHashBuy: string;
   txHashTransfer: string;
-  txHashSell: string;
   addressBuy: string;
   addressSell: string;
   steps: {
@@ -72,19 +71,14 @@ const mockHistoricalTrades: HistoricalTrade[] = [
     roi: 4.52,
     networkFee: 0.005,
     networkFeeAsset: "BER",
-    txHashBuy: "0x8fa3c5bc07...4a2b",
     txHashTransfer: "0x7b3e9af89c...12fe",
-    txHashSell: "0x3d4ee290bf...88de",
     addressBuy: "0x7415eC...2311",
     addressSell: "0xbf2c33...ee21",
     steps: [
-      { time: "08:03:10", description: "Получен сигнал от сканера (Спред +0.44%). Ликвидность подтверждена.", status: "done" },
-      { time: "08:03:15", description: "Размещение лимитного ордера на покупку 414.22 BER на HTX по цене $0.02827.", status: "done" },
-      { time: "08:03:22", description: "Ордер исполнен. Затраты: $11.71 USDT. Получено: 414.22 BER (минус комиссия 0.1%).", status: "done" },
-      { time: "08:03:28", description: "Вывод 413.81 BER на кошелек Bitget по сети BERA. Сбор сети: 0.005 BER.", status: "done" },
-      { time: "08:04:45", description: "Зачисление средств на баланс Bitget. Подтверждено блоков: 12/12.", status: "done" },
-      { time: "08:04:52", description: "Выставление лимитного ордера на продажу 413.81 BER на Bitget по цене $0.02828.", status: "done" },
-      { time: "08:04:58", description: "Сделка исполнена. Итоговая выручка: $11.70 USDT (минус комиссия 0.1%). Чистая прибыль +$0.53.", status: "done", badgeText: "+4.52% ROI" }
+      { time: "08:03:15", description: "Ордер на покупку: 414.22 BER на HTX по курсу $0.02827 (затраты: $11.71 USDT).", status: "done" },
+      { time: "08:03:28", description: "Вывод средств на биржу Bitget: перевод 414.21 BER по сети BERA. Комиссия: 0.005 BER.", status: "done" },
+      { time: "08:04:52", description: "Ордер на продажу: 414.21 BER на Bitget по курсу $0.02828 (выручка: $11.71 USDT).", status: "done" },
+      { time: "08:04:58", description: "Сводный итог: Куплено на $11.71 USDT, продано на $11.71 USDT. Итоговые комиссии: $0.023 USDT + 0.005 BER. Чистая прибыль: +$0.53 USDT.", status: "done", badgeText: "+4.52% ROI" }
     ]
   },
   {
@@ -104,17 +98,14 @@ const mockHistoricalTrades: HistoricalTrade[] = [
     roi: 2.89,
     networkFee: 0.01,
     networkFeeAsset: "ETHW",
-    txHashBuy: "0xec29c01fb5...d981",
     txHashTransfer: "0x4ae6c098df...cc52",
-    txHashSell: "0x5109b837fe...daef",
     addressBuy: "0x892a01...ab12",
     addressSell: "0x5a1b02...ef45",
     steps: [
-      { time: "01:19:42", description: "Обнаружение расхождения курса ETHW на MEXC и Gate. Потенциал +2.89%.", status: "done" },
-      { time: "01:20:02", description: "Ордер на закупку 125.4 ETHW по курсу $0.3175 на бирже MEXC полностью залит.", status: "done" },
-      { time: "01:20:15", description: "Трансфер монет ETHW на Gate в процессе обработки майнерами (сеть ETHW).", status: "done" },
-      { time: "01:21:50", description: "Баланс зачислен на Gate после 6 подтверждений сети.", status: "done" },
-      { time: "01:22:10", description: "Продажа 125.38 ETHW по курсу $0.3188 успешно завершена. Средства разблокированы.", status: "done", badgeText: "Успех" }
+      { time: "01:20:02", description: "Ордер на покупку: 125.40 ETHW на MEXC по курсу $0.3175 (затраты: $39.81 USDT).", status: "done" },
+      { time: "01:20:15", description: "Вывод средств на биржу Gate: перевод 125.39 ETHW по сети ETHW. Комиссия: 0.01 ETHW.", status: "done" },
+      { time: "01:22:10", description: "Ордер на продажу: 125.39 ETHW на Gate по курсу $0.3188 (выручка: $39.97 USDT).", status: "done" },
+      { time: "01:22:20", description: "Сводный итог: Куплено на $39.81 USDT, продано на $39.97 USDT. Итоговые комиссии: $0.08 USDT + 0.01 ETHW. Чистая прибыль: +$1.15 USDT.", status: "done", badgeText: "+2.89% ROI" }
     ]
   },
   {
@@ -134,16 +125,14 @@ const mockHistoricalTrades: HistoricalTrade[] = [
     roi: 3.91,
     networkFee: 0.005,
     networkFeeAsset: "BER",
-    txHashBuy: "0xa1e7cb8912...fc5d",
     txHashTransfer: "0xb3e18cfd92...0a3e",
-    txHashSell: "0xc8d930219b...aa22",
     addressBuy: "0x1234ea...cba1",
     addressSell: "0x5678fd...9876",
     steps: [
-      { time: "18:43:01", description: "Автоматический запуск трекинг-ордеров по паре BER/USDT на Bybit.", status: "done" },
-      { time: "18:43:15", description: "Исполнен ордер на покупку: 850 BER за 24.06 USDT.", status: "done" },
-      { time: "18:43:40", description: "Вывод токенов на OKX. Скорость обработки сети Bera: 45 сек.", status: "done" },
-      { time: "18:44:50", description: "Продажа 849.99 BER по курсу $0.02842. Прибыль зачислена.", status: "done" }
+      { time: "18:43:15", description: "Ордер на покупку: 850.00 BER на Bybit по курсу $0.02830 (затраты: $24.06 USDT).", status: "done" },
+      { time: "18:43:40", description: "Вывод средств на биржу OKX: перевод 849.99 BER по сети BERA. Комиссия: 0.005 BER.", status: "done" },
+      { time: "18:44:50", description: "Ордер на продажу: 849.99 BER на OKX по курсу $0.02842 (выручка: $24.16 USDT).", status: "done" },
+      { time: "18:45:00", description: "Сводный итог: Куплено на $24.06 USDT, продано на $24.16 USDT. Итоговые комиссии: $0.048 USDT + 0.005 BER. Чистая прибыль: +$0.94 USDT.", status: "done", badgeText: "+3.91% ROI" }
     ]
   },
   {
@@ -163,17 +152,13 @@ const mockHistoricalTrades: HistoricalTrade[] = [
     roi: -1.16,
     networkFee: 0.01,
     networkFeeAsset: "SOL",
-    txHashBuy: "0x19dfa29cee...719f",
     txHashTransfer: "0xf8ab5ee511...41bc",
-    txHashSell: "",
     addressBuy: "0xbcda81...2390",
     addressSell: "0xac9102...11ff",
     steps: [
-      { time: "10:10:05", description: "Запуск ордера SOL/USDT через API KuCoin.", status: "done" },
-      { time: "10:11:15", description: "Покупка 2.5 SOL по $154.20 завершена (385.50 USDT).", status: "done" },
-      { time: "10:12:30", description: "Сверхвысокая загрузка сети Solana. Скорость транзакций упала ниже 200 TPS.", status: "warning", badgeText: "Перегрузка" },
-      { time: "10:14:02", description: "Трансфер на Bybit завис в мемпуле. Курс на бирже получателе упал.", status: "warning" },
-      { time: "10:14:15", description: "Сделка отменена оператором. Ручной возврат средств. Списана комиссия сети.", status: "info" }
+      { time: "10:11:15", description: "Ордер на покупку: 2.50 SOL на KuCoin по курсу $154.20 (затраты: $385.50 USDT).", status: "done" },
+      { time: "10:12:30", description: "Вывод средств на биржу Bybit завис в мемпуле из-за перегрузки сети Solana (<200 TPS). Комиссия сети списана: 0.01 SOL.", status: "warning", badgeText: "Перегрузка" },
+      { time: "10:14:15", description: "Сводный итог: Сделка отменена оператором. Ручной возврат средств. Убыток (списана комиссия сети): -$4.50 USDT.", status: "info", badgeText: "-1.16% ROI" }
     ]
   },
   {
@@ -193,16 +178,14 @@ const mockHistoricalTrades: HistoricalTrade[] = [
     roi: 0.19,
     networkFee: 0.0001,
     networkFeeAsset: "BTC",
-    txHashBuy: "0x8e83b381bc...ab56",
     txHashTransfer: "0x91da23e1ca...bfd2",
-    txHashSell: "0x7ca110fb2d...ee45",
     addressBuy: "0x1111aa...fade",
     addressSell: "0x2222bb...dead",
     steps: [
-      { time: "22:01:10", description: "Синхронизация шлюза BTC Lightning для сокращения задержек вывода.", status: "done" },
-      { time: "22:03:15", description: "Ордер на 0.15 BTC успешно залит на Binance по спотовой котировке.", status: "done" },
-      { time: "22:11:22", description: "Транзакция Lightning Network подтверждена обеими сторонами.", status: "done" },
-      { time: "22:15:00", description: "Продажа на OKX по курсу $65450. Чистая маржа после вычета Lightning сборов.", status: "done", badgeText: "+18.25 USDT" }
+      { time: "22:03:15", description: "Ордер на покупку: 0.15 BTC на Binance по курсу $65,200.00 (затраты: $9,780.00 USDT).", status: "done" },
+      { time: "22:11:22", description: "Вывод средств на биржу OKX: перевод 0.1499 BTC по сети Lightning Network. Комиссия: 0.0001 BTC.", status: "done" },
+      { time: "22:15:00", description: "Ордер на продажу: 0.1499 BTC на OKX по курсу $65,450.00 (выручка: $9,810.95 USDT).", status: "done" },
+      { time: "22:15:10", description: "Сводный итог: Куплено на $9,780.00 USDT, продано на $9,810.95 USDT. Итоговые комиссии: $19.59 USDT + 0.0001 BTC. Чистая прибыль: +$18.25 USDT.", status: "done", badgeText: "+0.19% ROI" }
     ]
   },
   {
@@ -222,16 +205,14 @@ const mockHistoricalTrades: HistoricalTrade[] = [
     roi: 0.91,
     networkFee: 0.05,
     networkFeeAsset: "TON",
-    txHashBuy: "0x51ab8256bc...ff41",
     txHashTransfer: "0x61da928bc1...3dfa",
-    txHashSell: "0x71cfd928bc...ef98",
     addressBuy: "0x8888cc...1a2b",
     addressSell: "0x9999dd...3c4d",
     steps: [
-      { time: "15:35:10", description: "Мониторинг кошелька TON на OKX подтвердил доступность молниеносного вывода.", status: "done" },
-      { time: "15:37:25", description: "Покупка 85 TON на OKX по $6.25 выполнена.", status: "done" },
-      { time: "15:39:12", description: "Внутрисетевой перевод по блокчейну TON завершен за 54 секунды.", status: "done" },
-      { time: "15:40:02", description: "Закрывающий лимитный ордер на Bitget исполнен по $6.32. Курс закрыт.", status: "done" }
+      { time: "15:37:25", description: "Ордер на покупку: 85.00 TON на OKX по курсу $6.25 (затраты: $531.25 USDT).", status: "done" },
+      { time: "15:39:12", description: "Вывод средств на биржу Bitget: перевод 84.95 TON по сети TON. Комиссия: 0.05 TON.", status: "done" },
+      { time: "15:40:02", description: "Ордер на продажу: 84.95 TON на Bitget по курсу $6.32 (выручка: $536.88 USDT).", status: "done" },
+      { time: "15:40:15", description: "Сводный итог: Куплено на $531.25 USDT, продано на $536.88 USDT. Итоговые комиссии: $1.07 USDT + 0.05 TON. Чистая прибыль: +$4.82 USDT.", status: "done", badgeText: "+0.91% ROI" }
     ]
   },
   {
@@ -251,15 +232,13 @@ const mockHistoricalTrades: HistoricalTrade[] = [
     roi: 0.00,
     networkFee: 0.00,
     networkFeeAsset: "BER",
-    txHashBuy: "",
     txHashTransfer: "",
-    txHashSell: "",
     addressBuy: "",
     addressSell: "",
     steps: [
       { time: "14:08:12", description: "Сканер зафиксировал разницу курсов BER (+0.18%). Ордер подготовлен.", status: "done" },
       { time: "14:09:40", description: "Пользователь инициировал принудительную отмену перед исполнением.", status: "info", badgeText: "Отменено" },
-      { time: "14:10:00", description: "Сессия закрыта без резервирования ликвидности. Средства сохранены.", status: "done" }
+      { time: "14:10:00", description: "Сводный итог: Сессия закрыта без резервирования ликвидности. Средства сохранены, комиссии отсутствуют.", status: "done" }
     ]
   }
 ];
@@ -320,9 +299,12 @@ function getExtendedData(trade: HistoricalTrade) {
   };
 }
 
-function getStepDetailsType(stepText: string): "buy" | "transfer" | "sell" | null {
+function getStepDetailsType(stepText: string): "buy" | "transfer" | "sell" | "summary" | null {
   const norm = stepText.toLowerCase();
   
+  if (norm.includes("сводный итог") || norm.includes("итог")) {
+    return "summary";
+  }
   if (norm.includes("вывод") || norm.includes("трансфер") || norm.includes("зачисление средств") || norm.includes("баланс зачислен") || norm.includes("перевод по блокчейну")) {
     return "transfer";
   }
@@ -335,7 +317,11 @@ function getStepDetailsType(stepText: string): "buy" | "transfer" | "sell" | nul
   return null;
 }
 
-export function HistoryPage() {
+interface HistoryPageProps {
+  onGoToSignal?: (pair: string) => void;
+}
+
+export function HistoryPage({ onGoToSignal }: HistoryPageProps = {}) {
   const { showToast } = useToast();
   const [trades, setTrades] = useState<HistoricalTrade[]>(mockHistoricalTrades);
   const [searchTerm, setSearchTerm] = useState("");
@@ -644,9 +630,10 @@ export function HistoryPage() {
       </div>
 
       {/* Modal / Report Section */}
-      <AnimatePresence>
-        {selectedTrade && (
-          <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 md:p-6 z-50">
+      {createPortal(
+        <AnimatePresence>
+          {selectedTrade && (
+            <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 md:p-6 z-50">
             {/* Modal Body container */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -669,9 +656,11 @@ export function HistoryPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-slate-850 dark:text-slate-100 uppercase leading-none">Отчет о проведении арбитража</h3>
-                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider font-mono">
-                      ID операции: #{selectedTrade.id} · {selectedTrade.executionDate} в {selectedTrade.executionTime}
-                    </p>
+                    <div className="flex items-center flex-wrap gap-2 mt-1.5">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono leading-none">
+                        ID операции: #{selectedTrade.id} · {selectedTrade.executionDate} в {selectedTrade.executionTime}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -686,7 +675,7 @@ export function HistoryPage() {
               {/* Scrollable analysis report content */}
               <div className="overflow-y-auto p-5 space-y-6 font-sans">
                 {/* Ledger metrics overview columns */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50/40 dark:bg-[#121d30] border border-slate-105 dark:border-slate-800/80 p-4 rounded-2xl">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50/40 dark:bg-[#121d30] border border-slate-100 dark:border-slate-800/80 p-4 rounded-2xl">
                   <div className="flex flex-col">
                     <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase leading-none">Куплено на {selectedTrade.buyDex}</span>
                     <strong className="text-xs font-black text-slate-800 dark:text-slate-250 mt-1 font-mono tracking-tight select-all">
@@ -758,7 +747,7 @@ export function HistoryPage() {
                           <div 
                             className={`flex-1 min-w-0 transition-all duration-205 p-2.5 -m-2.5 rounded-2xl ${
                               isExpandable 
-                                ? "cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/15 border border-transparent hover:border-slate-105 dark:hover:border-slate-800/60" 
+                                ? "cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/15 border border-transparent hover:border-slate-100 dark:hover:border-slate-800/60" 
                                 : ""
                             }`}
                             onClick={() => {
@@ -849,25 +838,10 @@ export function HistoryPage() {
                                     </span>
                                   </div>
                                   <div className="flex flex-col border-t border-slate-100/50 dark:border-slate-800/40 pt-2">
-                                    <span className="text-[8px] font-bold text-slate-400 dark:text-slate-505 uppercase tracking-wider">Время операции</span>
+                                    <span className="text-[8px] font-bold text-slate-400 dark:text-slate-555 uppercase tracking-wider">Время операции</span>
                                     <span className="text-[11px] font-mono text-slate-600 dark:text-slate-355 mt-1">{ext.timeSent}</span>
                                   </div>
                                 </div>
-                                {selectedTrade.txHashBuy && (
-                                  <div className="border-t border-slate-100/50 dark:border-slate-800/40 pt-2">
-                                    <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Хэш транзакции (TxID)</span>
-                                    <div className="flex items-center justify-between bg-white dark:bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-150 dark:border-slate-800 mt-1">
-                                      <span className="font-mono text-[9.5px] text-slate-550 truncate select-all">{selectedTrade.txHashBuy}</span>
-                                      <button 
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); handleCopyText(selectedTrade.txHashBuy, "Хэш покупки"); }}
-                                        className="text-slate-400 hover:text-slate-600 cursor-pointer ml-1 p-0.5 rounded"
-                                      >
-                                        <Copy size={10.5} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             )}
 
@@ -934,38 +908,22 @@ export function HistoryPage() {
                                       <span className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Начало перевода</span>
                                       <span className="text-[11px] font-mono text-slate-600 dark:text-slate-350 mt-1">{ext.timeSent}</span>
                                     </div>
-                                    <div className="flex flex-col border-t border-slate-100 dark:border-slate-800/40 pt-2">
-                                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Фиксация депозита</span>
-                                      <span className="text-[11px] font-mono text-slate-600 dark:text-slate-350 mt-1">{ext.timeReceived}</span>
-                                    </div>
-                                    <div className="flex flex-col border-t border-slate-105 dark:border-slate-800/40 pt-2">
-                                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Чистый объем перевода</span>
-                                      <span className="text-[11px] font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1">
-                                        {ext.receiveAmount.toFixed(4)} {selectedTrade.volumeAsset}
-                                      </span>
-                                    </div>
-                                  </div>
+                                     <div className="flex flex-col border-t border-slate-100 dark:border-slate-800/40 pt-2">
+                                       <span className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Фиксация депозита</span>
+                                       <span className="text-[11px] font-mono text-slate-600 dark:text-slate-350 mt-1">{ext.timeReceived}</span>
+                                     </div>
+                                     <div className="flex flex-col border-t border-slate-100 dark:border-slate-800/40 pt-2">
+                                       <span className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Чистый объем перевода</span>
+                                       <span className="text-[11px] font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+                                         {ext.receiveAmount.toFixed(4)} {selectedTrade.volumeAsset}
+                                       </span>
+                                     </div>
+                                   </div>
+                                 </div>
+                               </div>
+                             )}
 
-                                  {selectedTrade.txHashTransfer && (
-                                    <div className="border-t border-slate-100 dark:border-slate-800/40 pt-2">
-                                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Хэш транзакции (TxID)</span>
-                                      <div className="flex items-center justify-between bg-white dark:bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-150 dark:border-slate-800 mt-1">
-                                        <span className="font-mono text-[9.5px] text-indigo-600 truncate select-all">{selectedTrade.txHashTransfer}</span>
-                                        <button 
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); handleCopyText(selectedTrade.txHashTransfer, "Хэш перевода"); }}
-                                          className="text-slate-400 hover:text-slate-600 cursor-pointer ml-1 p-0.5 rounded"
-                                        >
-                                          <Copy size={10.5} />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {isExpanded && detailsType === "sell" && ext && (
+                             {isExpanded && detailsType === "sell" && ext && (
                               <div 
                                 className="mt-3.5 bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200/50 dark:border-slate-850/60 rounded-xl p-4 space-y-3 text-xs text-left"
                                 onClick={(e) => e.stopPropagation()}
@@ -1017,30 +975,183 @@ export function HistoryPage() {
                                   </div>
                                   <div className="flex flex-col border-t border-slate-100/50 dark:border-slate-800/40 pt-2">
                                     <span className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Время операции</span>
-                                    <span className="text-[11px] font-mono text-slate-600 dark:text-slate-350 mt-1">{ext.timeReceived}</span>
+                                    <span className="text-[11px] font-mono text-slate-600 dark:text-slate-355 mt-1">{ext.timeReceived}</span>
                                   </div>
                                   <div className="flex flex-col border-t border-slate-100/50 dark:border-slate-800/40 pt-2">
-                                    <span className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Чистый результат</span>
+                                    <span className="text-[8px] font-bold text-slate-405 dark:text-slate-555 uppercase tracking-wider">Чистый результат</span>
                                     <span className={`text-[10px] font-black mt-1 leading-none uppercase ${selectedTrade.netProfit >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                                       {selectedTrade.netProfit >= 0 ? `+${selectedTrade.roi}% (Прибыль)` : `${selectedTrade.roi}% (Убыток)`}
                                     </span>
                                   </div>
                                 </div>
-                                {selectedTrade.txHashSell && (
-                                  <div className="border-t border-slate-100/50 dark:border-slate-800/40 pt-2">
-                                    <span className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">Хэш транзакции (TxID)</span>
-                                    <div className="flex items-center justify-between bg-white dark:bg-slate-900/60 px-2 py-1 rounded-lg border border-slate-150 dark:border-slate-800 mt-1">
-                                      <span className="font-mono text-[9.5px] text-slate-550 truncate select-all">{selectedTrade.txHashSell}</span>
-                                      <button 
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); handleCopyText(selectedTrade.txHashSell, "Хэш продажи"); }}
-                                        className="text-slate-400 hover:text-slate-600 cursor-pointer ml-1 p-0.5 rounded"
-                                      >
-                                        <Copy size={10.5} />
-                                      </button>
+                              </div>
+                            )}
+
+                            {isExpanded && detailsType === "summary" && ext && (
+                              <div 
+                                className="mt-3.5 bg-slate-50/70 dark:bg-slate-950/40 border border-slate-200/55 dark:border-slate-850/60 rounded-2xl p-4.5 space-y-4 text-xs text-left"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {/* Title of summary */}
+                                <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800/60 pb-2.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                    <span className="font-extrabold text-[9.5px] text-slate-550 uppercase tracking-wider">Сводное сравнение этапов операции (Buy vs Sell)</span>
+                                  </div>
+                                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase font-mono ${
+                                    selectedTrade.netProfit >= 0 
+                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
+                                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                  }`}>
+                                    {selectedTrade.netProfit >= 0 ? "Сделка прибыльна" : "Убыточная сделка"}
+                                  </span>
+                                </div>
+
+                                {/* Side-by-side Buy vs Sell */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
+                                  {/* Visual connector/divider */}
+                                  <div className="hidden md:block absolute left-1/2 top-2 bottom-2 w-px bg-slate-200/50 dark:bg-slate-800/50 -translate-x-1/2" />
+
+                                  {/* Buy Column */}
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2 border-b border-emerald-500/10 pb-1.5">
+                                      <div className="w-4 h-4 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                        <ArrowDownRight size={10} className="stroke-[3]" />
+                                      </div>
+                                      <span className="font-black text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                                        1. Вход (Покупка на {selectedTrade.buyDex})
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-y-2.5 gap-x-2">
+                                      <div>
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase">Биржа закупки</span>
+                                        <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200">{selectedTrade.buyDex}</span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase">Курс покупки</span>
+                                        <span className="text-[11px] font-extrabold font-mono text-slate-800 dark:text-slate-200">${selectedTrade.buyPrice.toFixed(5)}</span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase">Объем покупки</span>
+                                        <span className="text-[11px] font-extrabold font-mono text-slate-800 dark:text-slate-200">
+                                          {selectedTrade.volume} {selectedTrade.volumeAsset}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase">Комиссия (0.1%)</span>
+                                        <span className="text-[11px] font-bold font-mono text-rose-500">-${ext.buyFee.toFixed(4)} USDT</span>
+                                      </div>
+                                      <div className="col-span-2 bg-slate-100/30 dark:bg-slate-900/40 p-2 rounded-xl border border-slate-200/30 dark:border-slate-850/60">
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase">Итого затрачено капитала</span>
+                                        <span className="text-xs font-black font-mono text-slate-800 dark:text-slate-200 mt-0.5 block">${ext.buyTotal.toFixed(4)} USDT</span>
+                                      </div>
                                     </div>
                                   </div>
-                                )}
+
+                                  {/* Sell Column */}
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2 border-b border-indigo-500/10 pb-1.5">
+                                      <div className="w-4 h-4 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                                        <ArrowUpRight size={10} className="stroke-[3]" />
+                                      </div>
+                                      <span className="font-black text-[10px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                        2. Выход (Продажа на {selectedTrade.sellDex})
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-y-2.5 gap-x-2">
+                                      <div>
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase">Биржа выхода</span>
+                                        <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200">{selectedTrade.sellDex}</span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase">Курс продажи</span>
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[11px] font-extrabold font-mono text-slate-800 dark:text-slate-200">${selectedTrade.sellPrice.toFixed(5)}</span>
+                                          {selectedTrade.sellPrice > selectedTrade.buyPrice && (
+                                            <span className="text-[8px] font-black text-emerald-500 bg-emerald-500/10 px-1 py-0.2 rounded-sm leading-none">
+                                              +{(((selectedTrade.sellPrice - selectedTrade.buyPrice) / selectedTrade.buyPrice) * 100).toFixed(2)}%
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase">Проданный объем</span>
+                                        <span className="text-[11px] font-extrabold font-mono text-slate-800 dark:text-slate-200">
+                                          {ext.receiveAmount.toFixed(4)} {selectedTrade.volumeAsset}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase">Комиссия (0.1%)</span>
+                                        <span className="text-[11px] font-bold font-mono text-rose-500">-${ext.sellFee.toFixed(4)} USDT</span>
+                                      </div>
+                                      <div className="col-span-2 bg-slate-100/30 dark:bg-slate-900/40 p-2 rounded-xl border border-slate-200/30 dark:border-slate-850/60">
+                                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase">Итого выручено средств</span>
+                                        <span className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 block">${ext.sellTotal.toFixed(4)} USDT</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Financial Summary and Metrics */}
+                                <div className="border-t border-slate-150 dark:border-slate-800/60 pt-3.5 space-y-3">
+                                  <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Баланс доходности круга арбитража</span>
+                                  
+                                  {/* Dynamic progress bar */}
+                                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden flex">
+                                    <div 
+                                      className="bg-emerald-500/80 transition-all duration-300 h-full" 
+                                      style={{ width: `${selectedTrade.netProfit >= 0 ? Math.min(100, Math.max(20, 50 + selectedTrade.roi * 5)) : 30}%` }} 
+                                    />
+                                    <div 
+                                      className="bg-rose-400/80 transition-all duration-300 h-full flex-1" 
+                                    />
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                                    {/* Total Costs */}
+                                    <div className="bg-slate-100/30 dark:bg-slate-900/45 p-2.5 rounded-xl border border-slate-200/40 dark:border-slate-800/75">
+                                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Всего затрат (USDT)</span>
+                                      <div className="flex items-baseline gap-1 mt-1 font-mono">
+                                        <span className="text-xs font-extrabold text-slate-700 dark:text-slate-250">
+                                          ${(ext.buyTotal + ext.buyFee + ext.sellFee).toFixed(4)}
+                                        </span>
+                                        <span className="text-[9px] text-slate-400">USDT</span>
+                                      </div>
+                                      <span className="text-[8px] text-slate-400 mt-0.5 block">(сделка + комиссии CEX)</span>
+                                    </div>
+
+                                    {/* Network GAS fee */}
+                                    <div className="bg-slate-100/30 dark:bg-slate-900/45 p-2.5 rounded-xl border border-slate-200/40 dark:border-slate-800/75">
+                                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Комиссия блокчейн-сети</span>
+                                      <div className="flex items-baseline gap-1 mt-1 font-mono">
+                                        <span className="text-xs font-extrabold text-rose-500">
+                                          {selectedTrade.networkFee} {selectedTrade.networkFeeAsset}
+                                        </span>
+                                      </div>
+                                      <span className="text-[8px] text-slate-400 mt-0.5 block">({selectedTrade.network} Network Fee)</span>
+                                    </div>
+
+                                    {/* Net financial profile */}
+                                    <div className={`p-2.5 rounded-xl border ${
+                                      selectedTrade.netProfit >= 0 
+                                        ? "bg-emerald-500/[0.04] dark:bg-emerald-950/20 border-emerald-500/10 dark:border-emerald-500/25 text-emerald-600 dark:text-emerald-400" 
+                                        : "bg-rose-500/[0.04] dark:bg-rose-950/20 border-rose-500/10 dark:border-rose-500/25 text-rose-600 dark:text-rose-400"
+                                    }`}>
+                                      <span className="text-[8px] font-black uppercase block">Чистый финансовый итог</span>
+                                      <div className="flex items-baseline gap-1 mt-1 font-mono">
+                                        <span className="text-sm font-black">
+                                          {selectedTrade.netProfit >= 0 ? `+$${selectedTrade.netProfit.toFixed(2)}` : `-$${Math.abs(selectedTrade.netProfit).toFixed(2)}`}
+                                        </span>
+                                        <span className="text-[9.5px] font-extrabold">USDT</span>
+                                      </div>
+                                      <span className="text-[8px] font-black uppercase tracking-wider block mt-0.5">
+                                        {selectedTrade.roi.toFixed(2)}% ROI
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1058,6 +1169,19 @@ export function HistoryPage() {
                 </span>
 
                 <div className="flex items-center gap-2">
+                  {onGoToSignal && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onGoToSignal(selectedTrade.pair);
+                        handleSelectTrade(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-[10.5px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/15 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 border-0 rounded-xl transition-all cursor-pointer select-none active:scale-95 duration-150"
+                    >
+                      <Zap size={11} className="fill-blue-600 dark:fill-blue-400 stroke-[3]" />
+                      Смотреть сигнал
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleSelectTrade(null)}
                     className="px-4 py-2 text-[10.5px] font-black uppercase tracking-wider bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-755 text-slate-600 dark:text-slate-300 rounded-xl transition-all cursor-pointer"
@@ -1069,7 +1193,9 @@ export function HistoryPage() {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
     </div>
   );
 }

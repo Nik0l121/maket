@@ -166,7 +166,7 @@ export default function App() {
     });
 
     if (found) {
-      setSelectedSignal(found);
+      setDetailedSignal(found);
       handleActiveTabChange("Сканер");
       showToast(`Сигнал ${found.pair} успешно открыт в Сканере`, "success", "Переход к сигналу");
     } else {
@@ -381,6 +381,7 @@ export default function App() {
                     setIsScannerRunning={setIsScannerRunning} 
                     runningArbitrages={runningArbitrages}
                     scannerSubView={scannerSubView}
+                    setScannerSubView={setScannerSubView}
                   />
                 )
               ) : activeTab === "Безопасность" ? (

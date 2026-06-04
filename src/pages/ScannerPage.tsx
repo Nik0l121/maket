@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { 
   Play, 
   Square, 
@@ -45,7 +45,13 @@ export function SignalDrawer(props: {
   // Input fields loaded with signal defaults
   const [buyPriceInput, setBuyPriceInput] = useState<string>(signal.buyPrice);
   const [sellPriceInput, setSellPriceInput] = useState<string>(signal.sellPrice);
-  const [sumInput, setSumInput] = useState<string>("11.72");
+  const [sumInput, setSumInput] = useState<string>(() => {
+    const mode = localStorage.getItem("arbitrage_amount_mode") || "manual";
+    if (mode === "balance") {
+      return "11.72";
+    }
+    return localStorage.getItem("arbitrage_amount_usdt") || "11.72";
+  });
   
   // State for balance
   const [balance, setBalance] = useState<number>(11.72);
@@ -65,7 +71,13 @@ export function SignalDrawer(props: {
     setSellPriceInput(signal.sellPrice);
     prevBuyRef.current = signal.buyPrice;
     prevSellRef.current = signal.sellPrice;
-    setSumInput("11.72");
+    
+    const mode = localStorage.getItem("arbitrage_amount_mode") || "manual";
+    if (mode === "balance") {
+      setSumInput("11.72");
+    } else {
+      setSumInput(localStorage.getItem("arbitrage_amount_usdt") || "11.72");
+    }
     setConfirmed(true);
   }, [signal]);
 
@@ -944,6 +956,13 @@ export function SignalDrawer(props: {
 }
 
 // --- Main Scanner Page ---
+const EXCHANGES_WITH_BALANCES = [
+  { name: "MEXC", balance: 340.50 },
+  { name: "BITGET", balance: 180.20 },
+  { name: "BYBIT", balance: 290.00 },
+  { name: "HTX", balance: 125.75 }
+];
+
 export function ScannerPage({
   onSelectSignal,
   onShowDetailedAnalysis,
@@ -951,6 +970,7 @@ export function ScannerPage({
   setIsScannerRunning,
   runningArbitrages = [],
   scannerSubView = "scanner",
+  setScannerSubView,
 }: {
   onSelectSignal: (signal: Signal) => void;
   onShowDetailedAnalysis?: (signal: Signal) => void;
@@ -959,18 +979,160 @@ export function ScannerPage({
   runningArbitrages?: any[];
   key?: React.Key;
   scannerSubView?: "scanner" | "history";
+  setScannerSubView?: (view: "scanner" | "history") => void;
 }) {
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<string>("Все");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
+  // Exchanges selected for scanning and comparison
+  const [scannedExchanges, setScannedExchanges] = useState<string[]>(() => {
+    const stored = localStorage.getItem("scanned_exchanges");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {}
+    }
+    return ["HTX", "BITGET", "BYBIT", "MEXC"];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("scanned_exchanges", JSON.stringify(scannedExchanges));
+  }, [scannedExchanges]);
+
   // Parameters
-  const [sumAmount, setSumAmount] = useState<string>("12");
-  const [threshold, setThreshold] = useState<string>("0.1");
+  const [sumAmount, setSumAmount] = useState<string>(() => localStorage.getItem("arbitrage_amount_usdt") || "12");
+  const [threshold, setThreshold] = useState<string>(() => localStorage.getItem("profit_threshold") || "0.1");
   const [selectedDex, setSelectedDex] = useState<string>("Все");
   const [autoTrade, setAutoTrade] = useState<boolean>(true);
   const [onlyProfitable, setOnlyProfitable] = useState<boolean>(true);
+
+  // Advanced configurations
+  const [advAmountMode, setAdvAmountMode] = useState<"manual" | "balance">(() => 
+    (localStorage.getItem("arbitrage_amount_mode") as "manual" | "balance") || "manual"
+  );
+  const [advMinVol1, setAdvMinVol1] = useState<string>(() => 
+    localStorage.getItem("min_trade_volume") || "50000"
+  );
+  const [advMinVol2, setAdvMinVol2] = useState<string>(() => 
+    localStorage.getItem("min_trade_volume_second_exchange") || "50000"
+  );
+
+  const [advBuyTimeout, setAdvBuyTimeout] = useState<string>(() => 
+    localStorage.getItem("buy_order_timeout_minutes") || "15"
+  );
+  const [advSellTimeout, setAdvSellTimeout] = useState<string>(() => 
+    localStorage.getItem("sell_order_timeout_minutes") || "15"
+  );
+  const [advSmartTimeout, setAdvSmartTimeout] = useState<string>(() => 
+    localStorage.getItem("smart_trading_timeout_minutes") || "20"
+  );
+  const [advStopLoss, setAdvStopLoss] = useState<string>(() => 
+    localStorage.getItem("stop_loss_threshold_percent") || "5.0"
+  );
+  const [advLiquidityTimeout, setAdvLiquidityTimeout] = useState<string>(() => 
+    localStorage.getItem("liquidity_wait_timeout_seconds") || "120"
+  );
+  const [advMaxLoss, setAdvMaxLoss] = useState<string>(() => 
+    localStorage.getItem("market_order_max_loss_percent") || "0.2"
+  );
+  const [advLimitResubmit, setAdvLimitResubmit] = useState<boolean>(() => 
+    localStorage.getItem("limit_order_resubmit_enabled") === "true"
+  );
+
+  const [advPriceBufferEnabled, setAdvPriceBufferEnabled] = useState<boolean>(() => 
+    localStorage.getItem("price_change_buffer_enabled") !== "false"
+  );
+  const [advPriceBufferValue, setAdvPriceBufferValue] = useState<string>(() => 
+    localStorage.getItem("price_change_buffer_percent") || "0.8"
+  );
+  const [advArbitrageMode, setAdvArbitrageMode] = useState<string>(() => 
+    localStorage.getItem("arbitrage_mode") || "sequential"
+  );
+  const [advIterationMode, setAdvIterationMode] = useState<string>(() => 
+    localStorage.getItem("arbitrage_iteration_mode") || "CYCLE"
+  );
+
+  const [advPrimaryExchange, setAdvPrimaryExchange] = useState<string>(() => 
+    localStorage.getItem("primary_exchange") || "auto"
+  );
+  const [advPrimaryNetwork, setAdvPrimaryNetwork] = useState<string>(() => 
+    localStorage.getItem("primary_exchange_usdt_network") || "auto"
+  );
+
+  // Sync to local storage
+  useEffect(() => {
+    localStorage.setItem("arbitrage_amount_usdt", sumAmount);
+  }, [sumAmount]);
+
+  useEffect(() => {
+    localStorage.setItem("profit_threshold", threshold);
+  }, [threshold]);
+
+  useEffect(() => {
+    localStorage.setItem("arbitrage_amount_mode", advAmountMode);
+  }, [advAmountMode]);
+
+  useEffect(() => {
+    localStorage.setItem("min_trade_volume", advMinVol1);
+  }, [advMinVol1]);
+
+  useEffect(() => {
+    localStorage.setItem("min_trade_volume_second_exchange", advMinVol2);
+  }, [advMinVol2]);
+
+  useEffect(() => {
+    localStorage.setItem("buy_order_timeout_minutes", advBuyTimeout);
+  }, [advBuyTimeout]);
+
+  useEffect(() => {
+    localStorage.setItem("sell_order_timeout_minutes", advSellTimeout);
+  }, [advSellTimeout]);
+
+  useEffect(() => {
+    localStorage.setItem("smart_trading_timeout_minutes", advSmartTimeout);
+  }, [advSmartTimeout]);
+
+  useEffect(() => {
+    localStorage.setItem("stop_loss_threshold_percent", advStopLoss);
+  }, [advStopLoss]);
+
+  useEffect(() => {
+    localStorage.setItem("liquidity_wait_timeout_seconds", advLiquidityTimeout);
+  }, [advLiquidityTimeout]);
+
+  useEffect(() => {
+    localStorage.setItem("market_order_max_loss_percent", advMaxLoss);
+  }, [advMaxLoss]);
+
+  useEffect(() => {
+    localStorage.setItem("limit_order_resubmit_enabled", String(advLimitResubmit));
+  }, [advLimitResubmit]);
+
+  useEffect(() => {
+    localStorage.setItem("price_change_buffer_enabled", String(advPriceBufferEnabled));
+  }, [advPriceBufferEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem("price_change_buffer_percent", advPriceBufferValue);
+  }, [advPriceBufferValue]);
+
+  useEffect(() => {
+    localStorage.setItem("arbitrage_mode", advArbitrageMode);
+  }, [advArbitrageMode]);
+
+  useEffect(() => {
+    localStorage.setItem("arbitrage_iteration_mode", advIterationMode);
+  }, [advIterationMode]);
+
+  useEffect(() => {
+    localStorage.setItem("primary_exchange", advPrimaryExchange);
+  }, [advPrimaryExchange]);
+
+  useEffect(() => {
+    localStorage.setItem("primary_exchange_usdt_network", advPrimaryNetwork);
+  }, [advPrimaryNetwork]);
 
   // Statistics and session metrics
   const [signalsFound, setSignalsFound] = useState<number>(3);
@@ -979,6 +1141,15 @@ export function ScannerPage({
   const [maxSpread, setMaxSpread] = useState<string>("+0.58%");
   const [sessionTime, setSessionTime] = useState<string>("─");
   const [ticksCount, setTicksCount] = useState<number>(0);
+
+  // Find exchange with balance dynamically
+  const currentAutoExchangeObj = useMemo(() => {
+    const index = Math.floor(ticksCount / 15) % EXCHANGES_WITH_BALANCES.length;
+    return EXCHANGES_WITH_BALANCES[index];
+  }, [ticksCount]);
+
+  const currentAutoExchange = currentAutoExchangeObj.name;
+  const currentAutoBalance = currentAutoExchangeObj.balance;
 
   const [signals, setSignals] = useState<Signal[]>([
     { id: 1, pair: "BER/USDT", network: "BERA", spread: "+0.44%", profit: "+$0.53", buyPrice: "0.02826", sellPrice: "0.02827", buyDex: "HTX", sellDex: "BITGET", status: "К запуску", type: "profit" },
@@ -1031,35 +1202,88 @@ export function ScannerPage({
         // Micro simulation - add new signal (10% chance)
         if (Math.random() < 0.10) {
           const pairsList = [
-            { p: "TON/USDT", net: "TON", bp: "7.12", sp: "7.18", spr: "+0.84%", pr: "+$1.68", bd: "MEXC", sd: "BITGET" },
-            { p: "NOT/USDT", net: "TON", bp: "0.0125", sp: "0.0126", spr: "+0.80%", pr: "+$0.24", bd: "BITGET", sd: "MEXC" },
-            { p: "AVAX/USDT", net: "AVAX", bp: "32.40", sp: "32.41", spr: "+0.03%", pr: "+$0.08", bd: "HTX", sd: "BYBIT" }
+            { p: "TON/USDT", net: "TON", bp: 7.12, sp: 7.18, bd: "MEXC", sd: "BITGET" },
+            { p: "NOT/USDT", net: "TON", bp: 0.0125, sp: 0.0126, bd: "BITGET", sd: "MEXC" },
+            { p: "AVAX/USDT", net: "AVAX", bp: 32.40, sp: 32.55, bd: "HTX", sd: "BYBIT" },
+            { p: "BER/USDT", net: "BERA", bp: 0.02826, sp: 0.02848, bd: "HTX", sd: "BITGET" },
+            { p: "SOL/USDT", net: "SOLANA", bp: 148.22, sp: 149.32, bd: "BYBIT", sd: "HTX" }
           ];
 
           const pick = pairsList[Math.floor(Math.random() * pairsList.length)];
+          
+          // Modify exchanges based on Primary Exchange chosen, or automatic balance-find if active
+          let currentBuyDex = pick.bd;
+          let currentSellDex = pick.sd;
+          
+          if (scannedExchanges.length >= 2) {
+            if (advAmountMode === "balance") {
+              currentBuyDex = currentAutoExchange.toUpperCase();
+              if (!scannedExchanges.includes(currentBuyDex)) {
+                currentBuyDex = scannedExchanges[0];
+              }
+              const remains = scannedExchanges.filter(x => x !== currentBuyDex);
+              currentSellDex = remains.length > 0 ? remains[Math.floor(Math.random() * remains.length)] : currentBuyDex;
+            } else {
+              // Manual select of primary buy exchange
+              const primaryUpper = advPrimaryExchange.toUpperCase();
+              if (primaryUpper !== "AUTO" && scannedExchanges.includes(primaryUpper)) {
+                currentBuyDex = primaryUpper;
+              } else {
+                currentBuyDex = scannedExchanges[0];
+              }
+              const remains = scannedExchanges.filter(x => x !== currentBuyDex);
+              currentSellDex = remains.length > 0 ? remains[Math.floor(Math.random() * remains.length)] : currentBuyDex;
+            }
+          }
+
+          // Calculate search sum dynamically: If Auto-Balance, use current rotating exchange balance
+          const activeSum = advAmountMode === "balance" ? currentAutoBalance : (parseFloat(sumAmount) || 12);
+          
+          // Spread computing
+          const rawSpread = ((pick.sp - pick.bp) / pick.bp) * 100;
+          let finalSpread = rawSpread;
+          
+          // Price buffer effect
+          if (advPriceBufferEnabled) {
+            const bufVal = parseFloat(advPriceBufferValue) || 0.8;
+            finalSpread = rawSpread - bufVal;
+          }
+
+          // Compute realistic estimated profits
+          const baseNetworkFee = pick.net === "BERA" ? 0.0001 : pick.net === "SOLANA" ? 0.0005 : pick.net === "TON" ? 0.01 : 0.001;
+          const networkFee = baseNetworkFee * pick.bp;
+          const takerBuyFee = activeSum * 0.001;
+          const totalBoughtTokens = activeSum / pick.bp;
+          const takerSellFee = (totalBoughtTokens * pick.sp) * 0.001;
+          const totalFees = takerBuyFee + takerSellFee + networkFee;
+          const grossRevenue = totalBoughtTokens * pick.sp;
+          const dynamicNetProfit = grossRevenue - activeSum - totalFees;
+
+          const spreadStr = (finalSpread >= 0 ? "+" : "") + finalSpread.toFixed(2) + "%";
+          const profitStr = (dynamicNetProfit >= 0 ? "+" : "") + "$" + dynamicNetProfit.toFixed(2);
+          
           const newId = Date.now();
           const newSig: Signal = {
             id: newId,
             pair: pick.p,
-            network: pick.net,
-            spread: pick.spr,
-            profit: pick.pr,
-            buyPrice: pick.bp,
-            sellPrice: pick.sp,
-            buyDex: pick.bd,
-            sellDex: pick.sd,
-            status: "К запуску",
-            type: "profit"
+            network: advPrimaryNetwork !== "auto" && currentBuyDex === advPrimaryExchange.toUpperCase() ? advPrimaryNetwork : pick.net,
+            spread: spreadStr,
+            profit: profitStr,
+            buyPrice: pick.bp.toFixed(4),
+            sellPrice: pick.sp.toFixed(4),
+            buyDex: currentBuyDex,
+            sellDex: currentSellDex,
+            status: dynamicNetProfit > 0 ? "К запуску" : "Риск",
+            type: dynamicNetProfit > 0 ? "profit" : "risk"
           };
 
-          const sprVal = parseFloat(pick.spr.replace("%", ""));
           const limThreshold = parseFloat(threshold) || 0.1;
 
-          if (!onlyProfitable || sprVal >= limThreshold) {
+          if (!onlyProfitable || finalSpread >= limThreshold) {
             setSignals(prev => [newSig, ...prev.slice(0, 6)]);
             setLiveTimers(prev => ({ ...prev, [newId]: "00:00:01" }));
             setSignalsFound(c => c + 1);
-            showToast(`🚀 Найдена связка ${pick.p} со спредом ${pick.spr}!`, "success", "Сканер");
+            showToast(`🚀 Найдена связка ${pick.p} со спредом ${spreadStr}!`, "success", "Сканер");
           }
         }
 
@@ -1084,7 +1308,19 @@ export function ScannerPage({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isScannerRunning, ticksCount, threshold, onlyProfitable]);
+  }, [
+    isScannerRunning, 
+    ticksCount, 
+    threshold, 
+    onlyProfitable, 
+    sumAmount, 
+    advAmountMode, 
+    advPriceBufferEnabled, 
+    advPriceBufferValue, 
+    advPrimaryExchange, 
+    advPrimaryNetwork,
+    scannedExchanges
+  ]);
 
   const handleToggleScanner = () => {
     const nextState = !isScannerRunning;
@@ -1125,9 +1361,8 @@ export function ScannerPage({
       });
     }
 
-    if (selectedDex !== "Все") {
-      list = list.filter(s => s.buyDex === selectedDex || s.sellDex === selectedDex);
-    }
+    // Filter by scanned exchanges (both buy and sell exchanges of the signals must be among checked-scanned ones)
+    list = list.filter(s => scannedExchanges.includes(s.buyDex.toUpperCase()) && scannedExchanges.includes(s.sellDex.toUpperCase()));
 
     const limitThresh = parseFloat(threshold) || 0.0;
     list = list.filter(s => {
@@ -1171,11 +1406,11 @@ export function ScannerPage({
           <div className="lg:col-span-4 xl:col-span-3 space-y-6">
           
           {/* Scanner Control and Stats Center */}
-          <div className="bg-white border border-slate-200/50 rounded-3xl p-6 shadow-3xs space-y-5 relative overflow-hidden">
+          <div className="bg-white rounded-3xl p-6 shadow-3xs space-y-5 relative overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${isScannerRunning ? "bg-emerald-500 animate-pulse" : "bg-slate-350"}`} />
-                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest animate-none">Модуль сканирования</h3>
+                <span className={`w-2 h-2 rounded-full ${isScannerRunning ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+                <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest pl-1">Модуль сканирования</h3>
               </div>
               <span className={`text-[9.5px] font-black px-2.5 py-0.5 rounded-full ${
                 isScannerRunning 
@@ -1198,7 +1433,7 @@ export function ScannerPage({
                   <span className="text-sm font-black text-slate-800 font-mono block mt-0.5">{toLaunch}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] font-bold text-rose-450 uppercase tracking-wider block">Минимальный спред</span>
+                  <span className="text-[9px] font-bold text-rose-400 uppercase tracking-wider block">Минимальный спред</span>
                   <span className="text-sm font-black text-rose-500 font-mono block mt-0.5">{minSpread}</span>
                 </div>
                 <div>
@@ -1209,7 +1444,7 @@ export function ScannerPage({
 
               <div className="pt-2 border-t border-slate-200/60 flex justify-between items-center text-[10px] font-bold text-slate-500">
                 <div className="flex items-center gap-1.5 flex-nowrap">
-                  <span className={`w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse`} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                   <span>Время онлайн-сессии</span>
                 </div>
                 <span className="font-mono text-xs font-black text-slate-700">{sessionTime}</span>
@@ -1246,97 +1481,236 @@ export function ScannerPage({
           </div>
 
           {/* Configuration Settings Engine (styled professionally) */}
-          <div className="bg-white border border-slate-200/50 rounded-3xl p-6 shadow-3xs space-y-5">
+          <div className="bg-white rounded-3xl p-6 shadow-3xs space-y-5">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
               <Sliders size={15} className="text-blue-600" />
               <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest pl-1">Конфигурация параметров</h3>
             </div>
 
             <div className="space-y-4">
-              {/* Order Sum */}
+              {/* Режим определения суммы */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Объем для ордера (USDT)</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400">USDT</span>
-                  <input
-                    type="number"
-                    value={sumAmount}
-                    onChange={(e) => setSumAmount(e.target.value)}
-                    className="w-full pl-14 pr-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
-                  />
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Режим определения суммы</label>
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-50 border border-slate-200/50 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setAdvAmountMode("manual")}
+                    className={`py-1.5 px-2 text-[9px] font-black rounded-lg transition-all uppercase tracking-wider ${
+                      advAmountMode === "manual"
+                        ? "bg-blue-600 text-white shadow-2xs"
+                        : "text-slate-600 hover:text-slate-800"
+                    }`}
+                  >
+                    Вручную
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdvAmountMode("balance")}
+                    className={`py-1.5 px-2 text-[9px] font-black rounded-lg transition-all uppercase tracking-wider flex items-center justify-center gap-1 ${
+                      advAmountMode === "balance"
+                        ? "bg-blue-600 text-white shadow-2xs"
+                        : "text-slate-600 hover:text-slate-800"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Авто-поиск (баланс)
+                  </button>
                 </div>
               </div>
+
+              {/* Amount and primary/buy CEX selector block */}
+              {advAmountMode === "balance" ? (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between pl-1">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Автоматический остаток на CEX
+                      </span>
+                      <span className="text-[8.5px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 animate-pulse">
+                        Активен
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400">USDT</span>
+                      <input
+                        type="number"
+                        value={currentAutoBalance.toFixed(2)}
+                        disabled
+                        className="w-full pl-14 pr-4 py-3 border border-emerald-200 bg-emerald-50/30 text-emerald-700 rounded-xl text-xs font-bold font-mono cursor-not-allowed focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-50/50 border border-emerald-100/60 p-3 rounded-2xl space-y-2 text-[9.5px]">
+                    <div className="flex justify-between font-bold text-emerald-800">
+                      <span>Ведущая биржа покупки:</span>
+                      <span className="font-mono bg-white px-1.5 py-0.5 rounded text-[8.5px] border border-emerald-100">{currentAutoExchange}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-emerald-600">
+                      <span>Сумма под сделку:</span>
+                      <span className="font-mono">{currentAutoBalance.toFixed(2)} USDT</span>
+                    </div>
+                    <p className="text-[8.5px] text-emerald-500 leading-normal pt-1.5 border-t border-emerald-200/40">
+                      Логика CEX-автоматизации сканирует балансы и назначает ведущую биржу с активным депозитом как точку входа.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Сумма для поиска (USDT)</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400">USDT</span>
+                      <input
+                        type="number"
+                        value={sumAmount}
+                        onChange={(e) => setSumAmount(e.target.value)}
+                        className="w-full pl-14 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
+                        placeholder="Сумма сделки"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Ручной выбор основной биржи */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Основная биржа CEX</label>
+                    <select
+                      value={advPrimaryExchange}
+                      onChange={(e) => setAdvPrimaryExchange(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
+                    >
+                      <option value="htx">HTX Global</option>
+                      <option value="bitget">Bitget Exchange</option>
+                      <option value="mexc">MEXC Global</option>
+                      <option value="bybit">Bybit</option>
+                    </select>
+                    <p className="text-[8.5px] text-slate-400 pl-1 leading-normal">
+                      Ручной выбор точки входа / покупки в арбитражный круг.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Min Threshold spread */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Минимальный спред (%)</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400">%</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400 font-mono">%</span>
                   <input
                     type="number"
                     step="0.1"
                     value={threshold}
                     onChange={(e) => setThreshold(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
                   />
                 </div>
               </div>
 
-              {/* Specific DX filter */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Биржа сравнения</label>
-                <select
-                  value={selectedDex}
-                  onChange={(e) => setSelectedDex(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
-                >
-                  <option value="Все">Все подключенные биржи CEX</option>
-                  <option value="HTX">HTX Global</option>
-                  <option value="BITGET">Bitget Exchange</option>
-                  <option value="MEXC">MEXC Global</option>
-                  <option value="BYBIT">Bybit</option>
-                </select>
+              {/* Биржи для сканирования и сравнения */}
+              <div className="space-y-2 pt-1 border-t border-slate-100 mt-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block font-sans">Биржи для сравнения сделки</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {["BYBIT", "MEXC", "BITGET", "HTX"].map((exch) => {
+                    const isSelected = scannedExchanges.includes(exch);
+                    return (
+                      <button
+                        type="button"
+                        key={exch}
+                        onClick={() => {
+                          setScannedExchanges(prev => {
+                            if (prev.includes(exch)) {
+                              if (prev.length <= 2) {
+                                showToast("Выберите как минимум 2 биржи для сканирования межбиржевых спредов", "warning");
+                                return prev;
+                              }
+                              return prev.filter(x => x !== exch);
+                            } else {
+                              return [...prev, exch];
+                            }
+                          });
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2.5 border rounded-xl text-xs font-bold transition-all ${
+                          isSelected
+                            ? "bg-blue-50/60 border-blue-400 text-blue-700 shadow-2xs"
+                            : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100/50"
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-blue-500" : "bg-slate-300"}`} />
+                        <span>{exch}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[8.5px] text-slate-450 leading-normal pl-1">
+                  Активируйте CEX-биржи, котировки и спреды между которыми вы хотите сканировать в реальном времени.
+                </p>
               </div>
 
               {/* Toggles */}
-              <div className="space-y-3 pt-3 border-t border-slate-100 flex flex-col">
+              <div className="space-y-3 pt-3 flex flex-col border-t border-slate-100">
                 <label className="flex items-center justify-between cursor-pointer select-none py-1">
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-slate-700">Оптимизация треков</span>
-                    <span className="text-[9px] font-semibold text-slate-400">Автоматически вычитать комиссию Газа</span>
+                    <span className="text-[9px] text-slate-400 font-semibold leading-relaxed">Интеллектуальный маршрут транзакций</span>
                   </div>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={autoTrade}
                     onChange={(e) => setAutoTrade(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 transition-all"
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
                   />
                 </label>
 
-                <label className="flex items-center justify-between cursor-pointer select-none py-1">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-slate-700">Только положительный спред</span>
-                    <span className="text-[9px] font-semibold text-slate-400">Скрыть потенциальные риски</span>
+                <label className="flex items-center justify-between cursor-pointer select-none py-1 border-t border-slate-100">
+                  <div className="flex flex-col pt-1">
+                    <span className="text-xs font-bold text-slate-700">Только прибыльные</span>
+                    <span className="text-[9px] text-slate-400 font-semibold leading-relaxed font-mono">Фильтр по спреду &gt;= {threshold}%</span>
                   </div>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={onlyProfitable}
                     onChange={(e) => setOnlyProfitable(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 transition-all"
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
                   />
                 </label>
               </div>
-
             </div>
           </div>
-
         </div>
         )}
 
         {/* RIGHT PREMIUM SPACE AREA FOR INTERMEDIATE STATS AND SPREADSHEETS */}
         <div className={`${scannerSubView === "history" ? "lg:col-span-12" : "lg:col-span-8 xl:col-span-9"} space-y-6`}>
           {scannerSubView === "history" ? (
-            <HistoryPage />
+            <HistoryPage 
+              onGoToSignal={(pair) => {
+                if (setScannerSubView) {
+                  setScannerSubView("scanner");
+                }
+                const found = signals.find(s => s.pair === pair);
+                if (found) {
+                  if (onShowDetailedAnalysis) {
+                    onShowDetailedAnalysis(found);
+                  } else {
+                    onSelectSignal(found);
+                  }
+                  showToast(`Открыт детальный анализ сигнала ${pair}`, "success");
+                } else {
+                  const firstToken = pair.split("/")[0];
+                  const fallback = signals.find(s => s.pair.startsWith(firstToken));
+                  if (fallback) {
+                    if (onShowDetailedAnalysis) {
+                      onShowDetailedAnalysis(fallback);
+                    } else {
+                      onSelectSignal(fallback);
+                    }
+                    showToast(`Для ${pair} открыт детальный анализ похожего сигнала по активу ${firstToken}`, "success");
+                  } else {
+                    showToast(`Сигналы по валютной паре ${pair} сейчас не найдены в сканере`, "info");
+                  }
+                }
+              }}
+            />
           ) : (
             <>
               {/* Premium Gradient Deal Summary Metrics (identical to HistoryPage for unified state experience) */}
@@ -1381,7 +1755,7 @@ export function ScannerPage({
               </div>
 
               {/* Filtering Header Tab bar */}
-              <div className="bg-white border border-slate-200/50 rounded-3xl p-4 shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-white rounded-3xl p-4 shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                 
                 {/* Horizontal tab list with counters */}
                 <div className="flex overflow-x-auto scrollbar-none gap-1 pb-1.5 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 flex-nowrap md:flex-wrap">
@@ -1419,7 +1793,7 @@ export function ScannerPage({
               </div>
 
               {/* HIGH-PICTURE SPREADSHEET CARD LIST (Clean tabular view) */}
-              <div className="bg-white border border-slate-200/50 rounded-3xl shadow-3xs overflow-hidden">
+              <div className="bg-white rounded-3xl shadow-3xs overflow-hidden">
                 
                 {/* Responsive Table Columns Title headers */}
                 <div className="hidden md:grid grid-cols-12 gap-2 px-6 py-4.5 bg-slate-50/60 border-b border-slate-200/50 text-[10px] font-black uppercase text-slate-450 tracking-wider">
