@@ -1,6 +1,8 @@
 {
-  "name": "Arbitrizor Profile Settings",
-  "description": "A high-performance profile settings page for the Arbitrizor platform, featuring technical stats and secure account management.",
+  "name": "Arbitrizor CEX Arbitrage Scanner",
+  "description": "A high-performance CEX arbitrage scanner featuring real-time signals, multi-exchange CEX scanning, and modular automated executions.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

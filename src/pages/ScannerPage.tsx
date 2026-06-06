@@ -8,6 +8,7 @@ import {
   Search,
   Zap,
   ChevronRight,
+  ChevronDown,
   RefreshCw,
   X,
   Lock,
@@ -997,9 +998,25 @@ export function ScannerPage({
     return ["HTX", "BITGET", "BYBIT", "MEXC"];
   });
 
+  const [isExchangesDropdownOpen, setIsExchangesDropdownOpen] = useState<boolean>(false);
+  const [isConfigExpanded, setIsConfigExpanded] = useState<boolean>(false);
+  const exchangesDropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     localStorage.setItem("scanned_exchanges", JSON.stringify(scannedExchanges));
   }, [scannedExchanges]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (exchangesDropdownRef.current && !exchangesDropdownRef.current.contains(event.target as Node)) {
+        setIsExchangesDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Parameters
   const [sumAmount, setSumAmount] = useState<string>(() => localStorage.getItem("arbitrage_amount_usdt") || "12");
@@ -1361,9 +1378,6 @@ export function ScannerPage({
       });
     }
 
-    // Filter by scanned exchanges (both buy and sell exchanges of the signals must be among checked-scanned ones)
-    list = list.filter(s => scannedExchanges.includes(s.buyDex.toUpperCase()) && scannedExchanges.includes(s.sellDex.toUpperCase()));
-
     const limitThresh = parseFloat(threshold) || 0.0;
     list = list.filter(s => {
       const sprVal = parseFloat(s.spread.replace("%", "")) || 0;
@@ -1451,11 +1465,267 @@ export function ScannerPage({
               </div>
             </div>
 
+            {/* Collapse/Expand configuration parameters trigger */}
+            <div className="pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsConfigExpanded(!isConfigExpanded)}
+                className="w-full flex items-center justify-between py-2.5 px-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl transition-all font-sans text-left group"
+              >
+                <div className="flex items-center gap-2">
+                  <Sliders size={13} className={`transition-colors duration-250 ${isConfigExpanded ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"}`} />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 group-hover:text-slate-900">
+                    Настройки параметров
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ChevronDown 
+                    size={14} 
+                    className={`text-slate-400 transition-transform duration-250 ${isConfigExpanded ? "rotate-180 text-blue-500" : ""}`} 
+                  />
+                </div>
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {isConfigExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-4 pt-1 pb-3 text-left">
+                    {/* Режим определения суммы */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between pl-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-sans">Режим определения суммы</label>
+                        <span className="text-[8px] font-black uppercase text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-sans">
+                          Активен: {advAmountMode === "manual" ? "Вручную" : "Автоматически"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-50 border border-slate-200/50 rounded-2xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdvAmountMode("manual");
+                            showToast("Режим поиска переключен на ручную сумму", "info");
+                          }}
+                          className={`py-1.5 px-2 text-[9px] font-black rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 ${
+                            advAmountMode === "manual"
+                              ? "bg-blue-600 text-white shadow-2xs"
+                              : "text-slate-600 hover:text-slate-800 hover:bg-slate-100/50"
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${advAmountMode === "manual" ? "bg-emerald-400 animate-pulse animate-duration-1000" : "bg-slate-300"}`} />
+                          Вручную
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdvAmountMode("balance");
+                            showToast("Режим поиска переключен на авто-баланс CEX", "info");
+                          }}
+                          className={`py-1.5 px-2 text-[9px] font-black rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 ${
+                            advAmountMode === "balance"
+                              ? "bg-blue-600 text-white shadow-2xs"
+                              : "text-slate-600 hover:text-slate-800 hover:bg-slate-100/50"
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${advAmountMode === "balance" ? "bg-emerald-400 animate-pulse animate-duration-1000" : "bg-slate-300"}`} />
+                          Автоматически
+                        </button>
+                      </div>
+                      <p className="text-[8.5px] text-slate-400 pl-1 leading-normal font-sans">
+                        {advAmountMode === "manual" 
+                          ? "✓ Ввод фиксированного размера депозита в USDT. Поиск идет по указанной сумме." 
+                          : "✓ Система находит среди доступных CEX биржу с наибольшим балансом, принимая его за сумму для сканирования."}
+                      </p>
+                    </div>
+
+                    {/* Amount and primary/buy CEX selector block */}
+                    {advAmountMode === "balance" ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between pl-1">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans font-sans">
+                              Остаток на CEX
+                            </span>
+                            <span className="text-[8.5px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 animate-pulse font-sans">
+                              Активен
+                            </span>
+                          </div>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400 font-sans">USDT</span>
+                            <input
+                              type="number"
+                              value={currentAutoBalance.toFixed(2)}
+                              disabled
+                              className="w-full pl-14 pr-4 py-3 border border-emerald-200 bg-emerald-50/30 text-emerald-700 rounded-xl text-xs font-bold font-mono cursor-not-allowed focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="bg-emerald-50/50 border border-emerald-100/60 p-3 rounded-2xl space-y-2 text-[9.5px]">
+                          <div className="flex justify-between font-bold text-emerald-800 font-sans">
+                            <span>Ведущая биржа покупки:</span>
+                            <span className="font-mono bg-white px-1.5 py-0.5 rounded text-[8.5px] border border-emerald-100">{currentAutoExchange}</span>
+                          </div>
+                          <div className="flex justify-between font-bold text-emerald-600 font-sans">
+                            <span>Сумма под сделку:</span>
+                            <span className="font-mono">{currentAutoBalance.toFixed(2)} USDT</span>
+                          </div>
+                          <p className="text-[8.5px] text-emerald-500 leading-normal pt-1.5 border-t border-emerald-200/40 font-sans">
+                            Логика CEX-автоматизации сканирует балансы и назначает ведущую биржу с активным депозитом как точку входа.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3.5">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 font-sans">Сумма для поиска (USDT)</label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400">USDT</span>
+                            <input
+                              type="number"
+                              value={sumAmount}
+                              onChange={(e) => setSumAmount(e.target.value)}
+                              className="w-full pl-14 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
+                              placeholder="Сумма сделки"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Ручной выбор основной биржи */}
+                        <div className="space-y-1.5 font-sans font-sans">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Основная биржа CEX</label>
+                          <select
+                            value={advPrimaryExchange}
+                            onChange={(e) => setAdvPrimaryExchange(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
+                          >
+                            <option value="htx">HTX Global</option>
+                            <option value="bitget">Bitget Exchange</option>
+                            <option value="mexc">MEXC Global</option>
+                            <option value="bybit">Bybit</option>
+                          </select>
+                          <p className="text-[8.5px] text-slate-400 pl-1 leading-normal">
+                            Ручной выбор точки входа / покупки в арбитражный круг.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Min Threshold spread */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block font-sans">Минимальный спред (%)</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400 font-mono">%</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={threshold}
+                          onChange={(e) => setThreshold(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Биржи для сканирования и сравнения */}
+                    <div className="space-y-2 pt-1 border-t border-slate-100 mt-2 font-sans font-sans">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">
+                        Биржи для сравнения сделки ({scannedExchanges.length})
+                      </label>
+                      
+                      <div className="relative" ref={exchangesDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExchangesDropdownOpen(!isExchangesDropdownOpen);
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 transition-all text-left"
+                        >
+                          <span className="truncate whitespace-nowrap text-slate-750">
+                            {scannedExchanges.length === 0 
+                              ? "Ничего не выбрано" 
+                              : scannedExchanges.join(", ")}
+                          </span>
+                          <ChevronDown size={14} className={`text-slate-400 transition-transform duration-250 ${isExchangesDropdownOpen ? "rotate-180 text-blue-500" : ""}`} />
+                        </button>
+
+                        <AnimatePresence>
+                          {isExchangesDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute left-0 right-0 z-50 mt-1.5 p-2 bg-white border border-slate-200/90 rounded-2xl shadow-xl max-h-48 overflow-y-auto space-y-0.5"
+                            >
+                              {["BYBIT", "MEXC", "BITGET", "HTX", "BINANCE", "OKX", "KUCOIN", "GATE", "KRAKEN", "BINGX"].map((exch) => {
+                                const isSelected = scannedExchanges.includes(exch);
+                                return (
+                                  <button
+                                    type="button"
+                                    key={exch}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setScannedExchanges(prev => {
+                                        if (prev.includes(exch)) {
+                                          if (prev.length <= 2) {
+                                            showToast("Выберите как минимум 2 биржи для сканирования межбиржевых спредов", "warning");
+                                            return prev;
+                                          }
+                                          return prev.filter(x => x !== exch);
+                                        } else {
+                                          return [...prev, exch];
+                                        }
+                                      });
+                                    }}
+                                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-xl transition-all text-left ${
+                                      isSelected
+                                        ? "bg-blue-50/50 text-blue-700 hover:bg-blue-50"
+                                        : "text-slate-600 hover:bg-slate-50"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                                        isSelected 
+                                          ? "bg-blue-600 border-blue-600 text-white" 
+                                          : "border-slate-300 bg-white"
+                                      }`}>
+                                        {isSelected && <Check size={10} strokeWidth={3} />}
+                                      </div>
+                                      <span className="font-bold">{exch}</span>
+                                    </div>
+                                    {isSelected && (
+                                      <span className="text-[8px] font-black uppercase text-blue-500 bg-blue-100/50 px-1.5 py-0.5 rounded-md font-sans">
+                                        Активна
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <p className="text-[8.5px] text-slate-450 leading-normal pl-1">
+                        Активируйте CEX-биржи, котировки и спреды между которыми вы хотите сканировать в реальном времени. Настройки сканирования применяются мгновенно.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Micro helper copy */}
-            <p className="text-[11px] text-slate-400 leading-normal">
+            <p className="text-[11px] text-slate-400 leading-normal font-sans">
               {isScannerRunning 
                 ? "Прослушивание мемпулов и стаканов цен децентрализованных сетей рендерится в реальном времени ниже."
-                : "Контроллер находится в режиме ожидания. Нажмите кнопку запуска для автоанализа межбиржевого спреда."}
+                : "Контроллер находится в режиме ожидания. Настройте параметры при необходимости и запустите сканирование."}
             </p>
 
             <button
@@ -1480,202 +1750,7 @@ export function ScannerPage({
             </button>
           </div>
 
-          {/* Configuration Settings Engine (styled professionally) */}
-          <div className="bg-white rounded-3xl p-6 shadow-3xs space-y-5">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Sliders size={15} className="text-blue-600" />
-              <h3 className="text-[11px] font-black text-slate-800 uppercase tracking-widest pl-1">Конфигурация параметров</h3>
-            </div>
 
-            <div className="space-y-4">
-              {/* Режим определения суммы */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Режим определения суммы</label>
-                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-50 border border-slate-200/50 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setAdvAmountMode("manual")}
-                    className={`py-1.5 px-2 text-[9px] font-black rounded-lg transition-all uppercase tracking-wider ${
-                      advAmountMode === "manual"
-                        ? "bg-blue-600 text-white shadow-2xs"
-                        : "text-slate-600 hover:text-slate-800"
-                    }`}
-                  >
-                    Вручную
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAdvAmountMode("balance")}
-                    className={`py-1.5 px-2 text-[9px] font-black rounded-lg transition-all uppercase tracking-wider flex items-center justify-center gap-1 ${
-                      advAmountMode === "balance"
-                        ? "bg-blue-600 text-white shadow-2xs"
-                        : "text-slate-600 hover:text-slate-800"
-                    }`}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Авто-поиск (баланс)
-                  </button>
-                </div>
-              </div>
-
-              {/* Amount and primary/buy CEX selector block */}
-              {advAmountMode === "balance" ? (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between pl-1">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Автоматический остаток на CEX
-                      </span>
-                      <span className="text-[8.5px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 animate-pulse">
-                        Активен
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400">USDT</span>
-                      <input
-                        type="number"
-                        value={currentAutoBalance.toFixed(2)}
-                        disabled
-                        className="w-full pl-14 pr-4 py-3 border border-emerald-200 bg-emerald-50/30 text-emerald-700 rounded-xl text-xs font-bold font-mono cursor-not-allowed focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-emerald-50/50 border border-emerald-100/60 p-3 rounded-2xl space-y-2 text-[9.5px]">
-                    <div className="flex justify-between font-bold text-emerald-800">
-                      <span>Ведущая биржа покупки:</span>
-                      <span className="font-mono bg-white px-1.5 py-0.5 rounded text-[8.5px] border border-emerald-100">{currentAutoExchange}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-emerald-600">
-                      <span>Сумма под сделку:</span>
-                      <span className="font-mono">{currentAutoBalance.toFixed(2)} USDT</span>
-                    </div>
-                    <p className="text-[8.5px] text-emerald-500 leading-normal pt-1.5 border-t border-emerald-200/40">
-                      Логика CEX-автоматизации сканирует балансы и назначает ведущую биржу с активным депозитом как точку входа.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3.5">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Сумма для поиска (USDT)</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400">USDT</span>
-                      <input
-                        type="number"
-                        value={sumAmount}
-                        onChange={(e) => setSumAmount(e.target.value)}
-                        className="w-full pl-14 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
-                        placeholder="Сумма сделки"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Ручной выбор основной биржи */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Основная биржа CEX</label>
-                    <select
-                      value={advPrimaryExchange}
-                      onChange={(e) => setAdvPrimaryExchange(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:bg-white focus:border-blue-500 transition-all"
-                    >
-                      <option value="htx">HTX Global</option>
-                      <option value="bitget">Bitget Exchange</option>
-                      <option value="mexc">MEXC Global</option>
-                      <option value="bybit">Bybit</option>
-                    </select>
-                    <p className="text-[8.5px] text-slate-400 pl-1 leading-normal">
-                      Ручной выбор точки входа / покупки в арбитражный круг.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Min Threshold spread */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Минимальный спред (%)</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-[10px] text-slate-400 font-mono">%</span>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={threshold}
-                    onChange={(e) => setThreshold(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Биржи для сканирования и сравнения */}
-              <div className="space-y-2 pt-1 border-t border-slate-100 mt-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block font-sans">Биржи для сравнения сделки</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {["BYBIT", "MEXC", "BITGET", "HTX"].map((exch) => {
-                    const isSelected = scannedExchanges.includes(exch);
-                    return (
-                      <button
-                        type="button"
-                        key={exch}
-                        onClick={() => {
-                          setScannedExchanges(prev => {
-                            if (prev.includes(exch)) {
-                              if (prev.length <= 2) {
-                                showToast("Выберите как минимум 2 биржи для сканирования межбиржевых спредов", "warning");
-                                return prev;
-                              }
-                              return prev.filter(x => x !== exch);
-                            } else {
-                              return [...prev, exch];
-                            }
-                          });
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2.5 border rounded-xl text-xs font-bold transition-all ${
-                          isSelected
-                            ? "bg-blue-50/60 border-blue-400 text-blue-700 shadow-2xs"
-                            : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100/50"
-                        }`}
-                      >
-                        <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-blue-500" : "bg-slate-300"}`} />
-                        <span>{exch}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-[8.5px] text-slate-450 leading-normal pl-1">
-                  Активируйте CEX-биржи, котировки и спреды между которыми вы хотите сканировать в реальном времени.
-                </p>
-              </div>
-
-              {/* Toggles */}
-              <div className="space-y-3 pt-3 flex flex-col border-t border-slate-100">
-                <label className="flex items-center justify-between cursor-pointer select-none py-1">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-slate-700">Оптимизация треков</span>
-                    <span className="text-[9px] text-slate-400 font-semibold leading-relaxed">Интеллектуальный маршрут транзакций</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={autoTrade}
-                    onChange={(e) => setAutoTrade(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between cursor-pointer select-none py-1 border-t border-slate-100">
-                  <div className="flex flex-col pt-1">
-                    <span className="text-xs font-bold text-slate-700">Только прибыльные</span>
-                    <span className="text-[9px] text-slate-400 font-semibold leading-relaxed font-mono">Фильтр по спреду &gt;= {threshold}%</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={onlyProfitable}
-                    onChange={(e) => setOnlyProfitable(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
         </div>
         )}
 
@@ -1713,47 +1788,6 @@ export function ScannerPage({
             />
           ) : (
             <>
-              {/* Premium Gradient Deal Summary Metrics (identical to HistoryPage for unified state experience) */}
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 select-none">
-                {/* Card 1: Profit */}
-                <div className="bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/25 dark:to-teal-950/20 border border-emerald-500/10 dark:border-emerald-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
-                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">Всего чистой прибыли</span>
-                  <span className="text-xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400 mt-2 block">
-                    +$21.72
-                  </span>
-                  <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
-                    <TrendingUp size={10} className="text-emerald-500" /> Вычет всех сборов сети
-                  </p>
-                </div>
-
-                {/* Card 2: Successful Trades */}
-                <div className="bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-950/25 dark:to-indigo-950/20 border border-blue-500/10 dark:border-blue-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
-                  <span className="text-[9px] font-black text-blue-600 dark:text-blue-450 uppercase tracking-widest leading-none">Успешно закрыто</span>
-                  <span className="text-xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-205 mt-2 block">
-                    6 / 7 кругов
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1">Остальные диверсифицированы</span>
-                </div>
-
-                {/* Card 3: Win Rate */}
-                <div className="bg-gradient-to-br from-indigo-500/5 to-violet-500/5 dark:from-indigo-950/25 dark:to-violet-950/20 border border-indigo-500/10 dark:border-indigo-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
-                  <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest leading-none">Успешность винрейт</span>
-                  <span className="text-xl font-black font-mono tracking-tight text-indigo-500 dark:text-indigo-400 mt-2 block">
-                    85.7%
-                  </span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1">Высокая точность кругов</span>
-                </div>
-
-                {/* Card 4: Protected Capital */}
-                <div className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 dark:from-amber-950/25 dark:to-orange-950/20 border border-amber-500/15 dark:border-amber-500/20 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
-                  <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest leading-none">Сохраненный депозит</span>
-                  <span className="text-xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-205 mt-2 block">
-                    $9,410.00
-                  </span>
-                  <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400 mt-1 leading-normal uppercase text-[8px] font-extrabold tracking-wider bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/20 dark:border-emerald-500/15 self-start">ПОД ЗАЩИТОЙ SLIPPAGE</span>
-                </div>
-              </div>
-
               {/* Filtering Header Tab bar */}
               <div className="bg-white rounded-3xl p-4 shadow-3xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                 

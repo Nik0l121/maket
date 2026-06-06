@@ -562,7 +562,7 @@ export function DetailedSignalAnalysis({
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Сравнение цен лучших ордеров ask ({signal.buyDex}) и bid ({signal.sellDex})
+                    Сравнение цен на биржах ({signal.buyDex}) и ({signal.sellDex})
                   </p>
                 </div>
 

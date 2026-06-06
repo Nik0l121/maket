@@ -81,7 +81,7 @@ export function Sidebar({
       }}
       transition={{ type: "spring", damping: 25, stiffness: 200 }}
       className={`
-        fixed lg:relative z-40 h-[calc(100vh-64px)] flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200/60 dark:border-slate-800/80 overflow-hidden flex flex-col shadow-xl lg:shadow-none
+        fixed lg:relative z-40 h-[calc(100vh-56px)] flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200/60 dark:border-slate-800/80 overflow-hidden flex flex-col shadow-xl lg:shadow-none
         ${isSidebarOpen ? "w-[240px]" : "w-0"}
       `}
     >
@@ -230,7 +230,7 @@ export function Sidebar({
                 }`}
               >
                 <div className={`p-0.5 rounded transition-colors ${isSettingsMode ? "text-white" : "text-slate-400"}`}>
-                  <Settings size={15} />
+                  <Settings size={15} className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-45" />
                 </div>
                 <span className="font-bold text-[13px]">Настройки</span>
               </button>
@@ -285,15 +285,15 @@ export function Sidebar({
               {/* Button 1: Сигналы */}
               <button
                 onClick={() => setScannerSubView?.("scanner")}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 cursor-pointer text-left text-xs font-bold leading-none ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 group cursor-pointer text-left text-xs font-bold leading-none ${
                   scannerSubView === "scanner"
                     ? "bg-blue-600 text-white font-extrabold shadow-md shadow-blue-500/20"
-                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:text-slate-700 dark:hover:text-slate-200"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:text-slate-700 dark:hover:text-slate-250"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <div className={`p-0.5 rounded transition-colors ${scannerSubView === "scanner" ? "text-white" : "text-slate-400"}`}>
-                    <Radio size={15} />
+                    <Radio size={15} className="transition-transform duration-300 group-hover:scale-110" />
                   </div>
                   <span className="text-[13px]">Сигналы</span>
                 </div>
@@ -303,7 +303,7 @@ export function Sidebar({
               {/* Button 2: История сделок */}
               <button
                 onClick={() => setScannerSubView?.("history")}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 cursor-pointer text-left text-xs font-bold leading-none mt-1 ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-300 group cursor-pointer text-left text-xs font-bold leading-none mt-1 ${
                   scannerSubView === "history"
                     ? "bg-blue-600 text-white font-extrabold shadow-md shadow-blue-500/20"
                     : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/70 hover:text-slate-700 dark:hover:text-slate-200"
@@ -311,7 +311,7 @@ export function Sidebar({
               >
                 <div className="flex items-center gap-2.5">
                   <div className={`p-0.5 rounded transition-colors ${scannerSubView === "history" ? "text-white" : "text-slate-400"}`}>
-                    <History size={15} />
+                    <History size={15} className="transition-transform duration-300 group-hover:scale-110" />
                   </div>
                   <span className="text-[13px]">История</span>
                 </div>
@@ -358,7 +358,7 @@ export function Sidebar({
           <>
             <div className="space-y-0.5 pt-2">
               <p className="px-3 text-[9px] font-black text-slate-400/80 uppercase tracking-widest mb-3 leading-none">Разделы</p>
-              {navItems.map((item) => (
+              {navItems.filter(item => item.name !== "Сигналы").map((item) => (
                 <button
                   id={`nav-item-${item.name.toLowerCase()}`}
                   key={item.name}
@@ -374,7 +374,10 @@ export function Sidebar({
                 >
                   <div className="flex items-center gap-2.5">
                     <div className={`p-0.5 rounded transition-colors ${activeTab === item.name ? "text-white" : "text-slate-400 group-hover:text-slate-600"}`}>
-                      {React.cloneElement(item.icon as React.ReactElement, { size: 16 })}
+                      {React.cloneElement(item.icon as React.ReactElement, { 
+                        size: 16,
+                        className: "transition-transform duration-300 group-hover:scale-110"
+                      })}
                     </div>
                     <span className="font-bold text-[13px]">{item.name}</span>
                   </div>
@@ -523,14 +526,9 @@ export function Sidebar({
                 <div className="w-0.5 h-2 rounded-full bg-slate-200" />
               </div>
             </div>
-            <p className="text-[10px] font-bold text-slate-500 leading-tight truncate">Нет активных лимитов</p>
+            <p className="text-[10px] font-bold text-slate-500 leading-tight truncate">Нет активных сделок</p>
           </div>
         )}
-        
-        <button id="logout-button" className="w-full mt-3 py-2 flex items-center justify-center gap-2 text-slate-400 hover:text-rose-500 transition-colors font-bold text-[10px] group cursor-pointer">
-          <LogOut size={14} className="group-hover:-translate-x-1 transition-transform" />
-          Выйти из системы
-        </button>
       </div>
     </motion.aside>
   );

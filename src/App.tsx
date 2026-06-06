@@ -27,12 +27,15 @@ import { BalancePage } from "./pages/BalancePage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { FaqPage } from "./pages/FaqPage";
 import { AuthPage } from "./pages/AuthPage";
+import { LandingPage } from "./pages/LandingPage";
 import { NotificationItem } from "./types";
 import { useToast } from "./components/Toast";
 
 export default function App() {
   const { showToast } = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<"login" | "register">("login");
   const [theme, setTheme] = useState<"light" | "dark" | any>(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark") {
@@ -193,13 +196,39 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <AuthPage 
-        onLoginSuccess={(newEmail, newUser) => {
-          setEmail(newEmail);
-          setUsername(newUser);
-          setIsLoggedIn(true);
-        }} 
-      />
+      <div className="relative min-h-screen">
+        <LandingPage 
+          onOpenAuth={(mode) => {
+            setAuthInitialMode(mode || "login");
+            setIsAuthOpen(true);
+          }} 
+        />
+        
+        <AnimatePresence>
+          {isAuthOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md overflow-y-auto p-4"
+            >
+              <div className="w-full max-w-[420px] my-8">
+                <AuthPage 
+                  initialMode={authInitialMode}
+                  isModal={true}
+                  onLoginSuccess={(newEmail, newUser) => {
+                    setEmail(newEmail);
+                    setUsername(newUser);
+                    setIsLoggedIn(true);
+                    setIsAuthOpen(false);
+                  }}
+                  onClose={() => setIsAuthOpen(false)}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     );
   }
 

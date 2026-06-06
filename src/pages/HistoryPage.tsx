@@ -20,7 +20,9 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  History
+  History,
+  Percent,
+  Shield
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useToast } from "../components/Toast";
@@ -382,7 +384,7 @@ export function HistoryPage({ onGoToSignal }: HistoryPageProps = {}) {
       case "Отменен":
         return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700";
       default:
-        return "bg-slate-50 text-slate-705 border-slate-100";
+        return "bg-slate-50 text-slate-700 border-slate-100";
     }
   };
 
@@ -411,44 +413,72 @@ export function HistoryPage({ onGoToSignal }: HistoryPageProps = {}) {
         </button>
       </div>
 
-      {/* Analytics widgets with neat custom background gradients */}
+      {/* Analytics widgets with neat custom background gradients and elegant background icons */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 select-none">
         {/* Card 1: Profit */}
-        <div className="bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/25 dark:to-teal-950/20 border border-emerald-500/10 dark:border-emerald-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
-          <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">Всего чистой прибыли</span>
-          <span className="text-xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400 mt-2 block">
-            +${totalProfit.toFixed(2)}
-          </span>
-          <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
-            <TrendingUp size={10} className="text-emerald-500" /> Вычет всех сборов сети
+        <div id="metric-card-profit" className="relative overflow-hidden bg-gradient-to-br from-emerald-500/6 to-teal-500/6 dark:from-emerald-950/20 dark:to-teal-950/15 border border-emerald-500/15 dark:border-emerald-500/20 p-5 rounded-3xl flex flex-col justify-between hover:shadow-xs transition-all duration-200 hover:-translate-y-0.5 group animate-fade-in">
+          <div>
+            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Всего чистой прибыли</span>
+            <span className="text-2xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400 mt-2 block group-hover:scale-[1.02] origin-left transition-transform duration-200">
+              +${totalProfit.toFixed(2)}
+            </span>
+          </div>
+          <p className="text-[9.5px] font-bold text-slate-400 dark:text-slate-505 mt-3 flex items-center gap-1 z-10">
+            <TrendingUp size={11} className="text-emerald-500 shrink-0" /> Вычет всех сборов сети
           </p>
+          <TrendingUp 
+            size={72} 
+            className="absolute right-[-8px] bottom-[-10px] text-emerald-500/10 dark:text-emerald-400/6 -rotate-12 pointer-events-none transition-transform duration-300 group-hover:scale-110 group-hover:rotate-0" 
+            strokeWidth={1.5}
+          />
         </div>
 
         {/* Card 2: Successful Trades */}
-        <div className="bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-950/25 dark:to-indigo-950/20 border border-blue-500/10 dark:border-blue-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
-          <span className="text-[9px] font-black text-blue-600 dark:text-blue-450 uppercase tracking-widest leading-none">Успешно закрыто</span>
-          <span className="text-xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-200 mt-2 block">
-            {successfulTrades.length} / {trades.length} кругов
-          </span>
-          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-505 mt-1">Остальные диверсифицированы</span>
+        <div id="metric-card-trades" className="relative overflow-hidden bg-gradient-to-br from-blue-500/6 to-indigo-500/6 dark:from-blue-950/20 dark:to-indigo-950/15 border border-blue-500/15 dark:border-blue-500/20 p-5 rounded-3xl flex flex-col justify-between hover:shadow-xs transition-all duration-200 hover:-translate-y-0.5 group animate-fade-in">
+          <div>
+            <span className="text-[10px] font-black text-blue-600 dark:text-blue-450 uppercase tracking-wider block">Успешно закрыто</span>
+            <span className="text-2xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-200 mt-2 block group-hover:scale-[1.02] origin-left transition-transform duration-200">
+              {successfulTrades.length} / {trades.length} кругов
+            </span>
+          </div>
+          <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-505 mt-3 block z-10">Остальные диверсифицированы</span>
+          <CheckCircle2 
+            size={72} 
+            className="absolute right-[-8px] bottom-[-10px] text-blue-500/10 dark:text-blue-400/6 -rotate-12 pointer-events-none transition-transform duration-300 group-hover:scale-110 group-hover:rotate-0" 
+            strokeWidth={1.5}
+          />
         </div>
 
         {/* Card 3: Win Rate */}
-        <div className="bg-gradient-to-br from-indigo-500/5 to-violet-500/5 dark:from-indigo-950/25 dark:to-violet-950/20 border border-indigo-500/10 dark:border-indigo-500/15 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
-          <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest leading-none">Успешность винрейт</span>
-          <span className="text-xl font-black font-mono tracking-tight text-indigo-500 dark:text-indigo-400 mt-2 block">
-            {winRate}%
-          </span>
-          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-505 mt-1">Высокая точность кругов</span>
+        <div id="metric-card-winrate" className="relative overflow-hidden bg-gradient-to-br from-indigo-500/6 to-violet-500/6 dark:from-indigo-950/20 dark:to-violet-950/15 border border-indigo-500/15 dark:border-indigo-500/20 p-5 rounded-3xl flex flex-col justify-between hover:shadow-xs transition-all duration-200 hover:-translate-y-0.5 group animate-fade-in">
+          <div>
+            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">Успешность винрейт</span>
+            <span className="text-2xl font-black font-mono tracking-tight text-indigo-500 dark:text-indigo-400 mt-2 block group-hover:scale-[1.02] origin-left transition-transform duration-200">
+              {winRate}%
+            </span>
+          </div>
+          <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-505 mt-3 block z-10">Высокая точность кругов</span>
+          <Percent 
+            size={68} 
+            className="absolute right-[-6px] bottom-[-8px] text-indigo-500/10 dark:text-indigo-400/6 -rotate-12 pointer-events-none transition-transform duration-300 group-hover:scale-110 group-hover:rotate-0" 
+            strokeWidth={1.5}
+          />
         </div>
 
         {/* Card 4: Protected Capital */}
-        <div className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 dark:from-amber-950/25 dark:to-orange-950/20 border border-amber-500/15 dark:border-amber-500/20 p-4 rounded-2xl flex flex-col justify-between hover:shadow-2xs transition-all duration-200">
-          <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest leading-none">Сохраненный депозит</span>
-          <span className="text-xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-200 mt-2 block">
-            $9,410.00
-          </span>
-          <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400 mt-1 leading-normal uppercase text-[8px] font-extrabold tracking-wider bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/20 dark:border-emerald-500/15 self-start">ПОД ЗАЩИТОЙ SLIPPAGE</span>
+        <div id="metric-card-protected" className="relative overflow-hidden bg-gradient-to-br from-amber-500/6 to-orange-500/6 dark:from-amber-950/20 dark:to-orange-950/15 border border-amber-500/15 dark:border-amber-500/20 p-5 rounded-3xl flex flex-col justify-between hover:shadow-xs transition-all duration-200 hover:-translate-y-0.5 group animate-fade-in">
+          <div>
+            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Сохраненный депозит</span>
+            <span className="text-2xl font-black font-mono tracking-tight text-slate-800 dark:text-slate-200 mt-2 block group-hover:scale-[1.02] origin-left transition-transform duration-200">
+              $9,410.00
+            </span>
+          </div>
+          <span className="text-[8.5px] font-extrabold text-emerald-500 dark:text-emerald-400 mt-3 leading-normal uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/20 dark:border-emerald-500/15 self-start z-10">ПОД ЗАЩИТОЙ SLIPPAGE</span>
+          <Shield 
+            size={72} 
+            className="absolute right-[-8px] bottom-[-10px] text-amber-500/10 dark:text-amber-400/6 -rotate-12 pointer-events-none transition-transform duration-300 group-hover:scale-110 group-hover:rotate-0" 
+            strokeWidth={1.5}
+          />
         </div>
       </div>
 

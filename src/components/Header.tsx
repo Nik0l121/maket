@@ -73,7 +73,7 @@ export function Header({
                   : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200"
               }`}
             >
-              <span className={`${activeHeaderNav === nav.name ? "text-white" : "group-hover:text-blue-500 dark:group-hover:text-blue-400"}`}>{nav.icon}</span>
+              <span className={`inline-flex shrink-0 transition-transform duration-300 group-hover:scale-110 ${activeHeaderNav === nav.name ? "text-white" : "group-hover:text-blue-500 dark:group-hover:text-blue-400"}`}>{nav.icon}</span>
               <span className="text-[13px] font-bold tracking-tight">{nav.name}</span>
             </button>
           ))}
@@ -88,13 +88,13 @@ export function Header({
               <button 
                 title="Уведомления" 
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className={`p-1.5 rounded-lg transition-all relative cursor-pointer ${
+                className={`p-1.5 rounded-lg transition-all relative cursor-pointer group ${
                   isNotifOpen 
                     ? "bg-slate-100 dark:bg-slate-850 text-slate-800 dark:text-slate-100" 
                     : "text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                 }`}
               >
-                <Bell size={16} />
+                <Bell size={16} className="transition-transform duration-300 group-hover:scale-110" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
                 )}
@@ -182,25 +182,25 @@ export function Header({
                 type="button"
                 onClick={() => onChangeTheme?.("light")}
                 title="Светлая тема"
-                className={`p-1 rounded-md transition-all cursor-pointer ${
+                className={`p-1 rounded-md transition-all cursor-pointer group ${
                   theme === "light" 
                     ? "bg-white text-blue-650 shadow-3xs" 
                     : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400"
                 }`}
               >
-                <Sun size={13} />
+                <Sun size={13} className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
               </button>
               <button 
                 type="button"
                 onClick={() => onChangeTheme?.("dark")}
                 title="Темная тема"
-                className={`p-1 rounded-md transition-all cursor-pointer ${
+                className={`p-1 rounded-md transition-all cursor-pointer group ${
                   theme === "dark" 
                     ? "bg-slate-900 text-amber-450 border border-slate-700/60 shadow-3xs" 
                     : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350"
                 }`}
               >
-                <Moon size={13} />
+                <Moon size={13} className="transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12" />
               </button>
             </div>
 
@@ -224,9 +224,9 @@ export function Header({
             <button 
               onClick={onLogout}
               title="Выйти" 
-              className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30"
+              className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30 group"
             >
-              <LogOut size={16} />
+              <LogOut size={16} className="transition-transform duration-300 group-hover:scale-110 group-hover:-translate-x-0.5" />
             </button>
           )}
 
